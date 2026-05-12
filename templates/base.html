@@ -17,12 +17,15 @@
     <div class="flex h-screen overflow-hidden">
         <!-- Sidebar -->
         <aside class="w-72 bg-white border-r flex flex-col shadow-sm z-10">
-            <!-- Logo -->
-            <div class="px-8 pt-8 pb-4 flex justify-center">
-                <div class="group cursor-pointer">
-                    <div class="w-20 h-20 flex-shrink-0 bg-white rounded-3xl shadow-sm border border-gray-100 p-2 transform group-hover:scale-105 transition-all duration-300">
-                        <img src="{{ url_for('static', filename='img/shk_logo.png') }}" alt="SHK Industries" class="w-full h-full object-contain" onerror="this.style.display='none'">
-                    </div>
+            <!-- Logo & Brand Header -->
+            <div class="px-6 pt-8 pb-6 flex items-center gap-3">
+                <div class="w-12 h-12 flex-shrink-0">
+                    <img src="{{ url_for('static', filename='img/shk_logo_new.png') }}" alt="Logo" class="w-full h-full object-contain">
+                </div>
+                <div>
+                    <h1 class="text-[14px] font-black text-[#1A237E] uppercase tracking-tighter leading-tight">
+                        SHK <br><span class="text-[#D4AF37]">WORK FLOW</span>
+                    </h1>
                 </div>
             </div>
 

@@ -28,12 +28,21 @@
         }
     </style>
 </head>
-<body class="p-6">
-    <div class="glass-card p-10 rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.2)] w-full relative z-10" style="max-width: 450px;">
-        <div class="text-center mb-10">
-            <div class="w-48 h-48 mx-auto transform hover:scale-105 transition-all duration-500">
-                <img src="{{ url_for('static', filename='img/shk_logo.png') }}" alt="SHK Industries" class="w-full h-full object-contain filter drop-shadow-lg" onerror="this.style.display='none'">
-            </div>
+<body class="p-6 relative">
+    <!-- Top Left Branding -->
+    <div class="absolute top-6 left-8 flex items-center gap-6 z-20">
+        <div class="w-24 h-24 transform hover:scale-110 transition-all duration-500">
+            <img src="{{ url_for('static', filename='img/shk_logo_new.png') }}" alt="Logo" class="w-full h-full object-contain filter drop-shadow-md">
+        </div>
+        <h1 class="text-xl font-black text-[#1A237E] tracking-tighter uppercase">
+            SHK <span class="text-[#D4AF37]">WORK FLOW</span>
+        </h1>
+    </div>
+
+    <div class="glass-card p-10 rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.15)] w-full relative z-10" style="max-width: 450px;">
+        <div class="text-center mb-8">
+            <h2 class="text-3xl font-bold text-[#1A237E]">Sign In</h2>
+            <p class="text-gray-400 text-sm mt-2 font-medium">Welcome back to SHK Industries</p>
         </div>
 
         <!-- Flash Messages -->
