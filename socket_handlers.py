@@ -27,6 +27,14 @@ def register_socket_handlers(socketio):
         group_id = str(data.get('group_id', ''))
         if group_id:
             join_room(group_id)
+            group = Group.query.get(int(group_id))
+            if group:
+                emit('new_notification', {
+                    'type': 'join',
+                    'username': current_user.username,
+                    'group_name': group.name,
+                    'timestamp': datetime.now().strftime('%I:%M %p')
+                }, room=group_id, include_self=False)
 
     @socketio.on('send_message')
     def handle_message(data):
@@ -54,7 +62,7 @@ def register_socket_handlers(socketio):
             parent_id=int(parent_id) if parent_id else None,
             message_type=msg_type,
             file_url=file_url,
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now()
         )
         db.session.add(msg)
         db.session.commit()
@@ -79,13 +87,23 @@ def register_socket_handlers(socketio):
             'file_type':    file_type,
             'file_name':    file_name,
             'msg_type':     msg_type,
-            'timestamp':    msg.timestamp.strftime('%I:%M %p'),
+            'timestamp':    msg.timestamp.strftime('%b %d, %I:%M %p'),
             'group_id':     group_id,
             'parent_id':    parent_id,
             'reply_preview': reply_preview
         }
 
         emit('receive_message', output, room=str(group_id))
+        
+        # Also emit a notification for everyone in the group (excluding sender)
+        emit('new_notification', {
+            'type': 'message',
+            'username': current_user.username,
+            'content': content or 'sent a file',
+            'group_id': group_id,
+            'group_name': group.name,
+            'timestamp': output['timestamp']
+        }, room=str(group_id), include_self=False)
 
     @socketio.on('typing')
     def handle_typing(data):

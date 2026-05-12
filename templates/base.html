@@ -7,6 +7,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script>const socket = io();</script>
     <style>
         body { font-family: 'Outfit', sans-serif; background-color: #F8F9FA; }
         .nav-link:hover { background: rgba(26, 35, 126, 0.05); color: #1A237E; }
@@ -111,8 +113,29 @@
                 
                 <div class="flex items-center gap-6">
                     <div class="relative">
-                        <i data-lucide="bell" class="w-6 h-6 text-gray-400 cursor-pointer hover:text-[#1A237E]"></i>
-                        <span class="absolute -top-1 -right-1 w-2 h-2 bg-orange-500 rounded-full"></span>
+                        <button id="notification-bell" class="relative p-2 text-gray-400 hover:text-[#1A237E] transition-colors focus:outline-none">
+                            <i data-lucide="bell" class="w-6 h-6"></i>
+                            <span id="notification-badge" class="absolute top-1 right-1 w-4 h-4 bg-orange-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full hidden">0</span>
+                        </button>
+                        
+                        <!-- Notification Dropdown -->
+                        <div id="notification-dropdown" class="absolute right-0 mt-3 w-80 bg-white rounded-2xl shadow-2xl border border-gray-100 hidden z-50 overflow-hidden transform transition-all scale-95 opacity-0 origin-top-right">
+                            <div class="p-4 border-b flex items-center justify-between bg-gray-50/50">
+                                <h3 class="text-sm font-bold text-[#1A237E]">Notifications</h3>
+                                <button id="clear-notifications" class="text-[10px] font-bold text-gray-400 hover:text-rose-500 uppercase tracking-tighter transition-colors">Clear All</button>
+                            </div>
+                            <div id="notification-list" class="max-h-96 overflow-y-auto py-2">
+                                <div id="no-notifications" class="p-8 text-center">
+                                    <div class="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-3">
+                                        <i data-lucide="bell-off" class="w-6 h-6 text-gray-300"></i>
+                                    </div>
+                                    <p class="text-xs text-gray-400 font-medium">No new notifications</p>
+                                </div>
+                            </div>
+                            <div class="p-3 border-t bg-gray-50/50 text-center">
+                                <button class="text-[10px] font-bold text-[#1A237E] uppercase tracking-widest hover:underline">View All Activity</button>
+                            </div>
+                        </div>
                     </div>
                     <div class="flex items-center gap-3 pl-6 border-l">
                         <div class="text-right">
@@ -147,6 +170,125 @@
 
     <script>
         lucide.createIcons();
+
+        // Global Notification Logic
+        let notifications = [];
+
+        const bellBtn = document.getElementById('notification-bell');
+        const dropdown = document.getElementById('notification-dropdown');
+        const badge = document.getElementById('notification-badge');
+        const list = document.getElementById('notification-list');
+        const noNotifs = document.getElementById('no-notifications');
+        const clearBtn = document.getElementById('clear-notifications');
+
+        function updateBadge() {
+            const count = notifications.length;
+            if (count > 0) {
+                badge.textContent = count > 9 ? '9+' : count;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+
+        function addNotification(data) {
+            notifications.unshift(data);
+            if (notifications.length > 20) notifications.pop(); // Keep last 20
+            
+            noNotifs.classList.add('hidden');
+            
+            const item = document.createElement('div');
+            item.className = 'px-4 py-3 hover:bg-gray-50 transition-colors cursor-pointer border-b border-gray-50 last:border-0 flex items-start gap-3';
+            
+            const iconBg = data.type === 'message' ? 'bg-blue-50 text-blue-500' : 'bg-emerald-50 text-emerald-500';
+            const icon = data.type === 'message' ? 'message-square' : 'user-plus';
+            
+            item.innerHTML = `
+                <div class="w-8 h-8 rounded-lg ${iconBg} flex items-center justify-center flex-shrink-0">
+                    <i data-lucide="${icon}" class="w-4 h-4"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-xs font-bold text-gray-800 truncate">
+                        ${data.username} <span class="font-normal text-gray-500">${data.type === 'message' ? 'sent a message in' : 'joined'}</span> #${data.group_name}
+                    </p>
+                    <p class="text-[10px] text-gray-400 mt-0.5 line-clamp-1 italic">
+                        ${data.type === 'message' ? data.content : 'New member active'}
+                    </p>
+                    <p class="text-[9px] text-gray-300 mt-1 font-bold uppercase">${data.timestamp}</p>
+                </div>
+            `;
+            
+            list.prepend(item);
+            if (list.children.length > 21) list.lastElementChild.remove(); // +1 for noNotifs if hidden
+            
+            lucide.createIcons();
+            updateBadge();
+
+            // Web Notification (optional, but good for UX)
+            if (Notification.permission === "granted") {
+                new Notification(`SHK: ${data.username}`, {
+                    body: data.type === 'message' ? data.content : `Joined #${data.group_name}`,
+                });
+            }
+        }
+
+        bellBtn.onclick = (e) => {
+            e.stopPropagation();
+            const isHidden = dropdown.classList.contains('hidden');
+            if (isHidden) {
+                dropdown.classList.remove('hidden');
+                setTimeout(() => {
+                    dropdown.classList.remove('scale-95', 'opacity-0');
+                    dropdown.classList.add('scale-100', 'opacity-100');
+                }, 10);
+                // Clear badge when viewing
+                notifications = [];
+                updateBadge();
+            } else {
+                hideDropdown();
+            }
+        };
+
+        function hideDropdown() {
+            dropdown.classList.remove('scale-100', 'opacity-100');
+            dropdown.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => dropdown.classList.add('hidden'), 200);
+        }
+
+        document.addEventListener('click', () => hideDropdown());
+        dropdown.onclick = (e) => e.stopPropagation();
+
+        clearBtn.onclick = () => {
+            notifications = [];
+            list.innerHTML = '';
+            list.appendChild(noNotifs);
+            noNotifs.classList.remove('hidden');
+            updateBadge();
+        };
+
+        // Listen for notifications
+        socket.on('new_notification', (data) => {
+            // Only show notification if we are NOT in the chat room that the notification is about
+            // Or if we want to show it anyway, we can. The user asked for "display notifications whenever someone sends a message".
+            // Let's check if the current page is chat and if the group matches.
+            const currentGroupId = typeof GROUP_ID !== 'undefined' ? GROUP_ID : null;
+            
+            if (data.group_id && parseInt(data.group_id) === currentGroupId) {
+                // We are already in this chat, maybe don't show a notification badge?
+                // But user might want it anyway. Let's show it if it's not the current view.
+                // For now, let's always show it to be safe, or just skip if we are already seeing the message.
+                // Actually, if we're in the room, 'receive_message' already handles it.
+                // So let's only add notification if we're NOT in that specific group.
+                return;
+            }
+            
+            addNotification(data);
+        });
+
+        // Request notification permission
+        if (Notification.permission !== "granted" && Notification.permission !== "denied") {
+            Notification.requestPermission();
+        }
     </script>
 </body>
 </html>

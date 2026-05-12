@@ -8,7 +8,7 @@ const typingIndicator = document.getElementById('typing-indicator');
 let currentChannel = 'general';
 
 // Join channel
-socket.emit('join', { channel_id: currentChannel });
+socket.emit('join', { group_id: currentChannel });
 
 // Receive message
 socket.on('receive_message', (data) => {
@@ -33,7 +33,7 @@ socket.on('receive_message', (data) => {
 // Typing indicator
 let typingTimeout;
 messageInput.addEventListener('input', () => {
-    socket.emit('typing', { channel_id: currentChannel });
+    socket.emit('typing', { group_id: currentChannel });
 });
 
 socket.on('user_typing', (data) => {
@@ -50,7 +50,7 @@ messageForm.addEventListener('submit', (e) => {
     const content = messageInput.value.trim();
     if (content) {
         socket.emit('send_message', {
-            channel_id: currentChannel,
+            group_id: currentChannel,
             content: content
         });
         messageInput.value = '';

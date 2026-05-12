@@ -9,7 +9,7 @@ db = SQLAlchemy()
 group_members = db.Table('group_members',
     db.Column('user_id', db.Integer, db.ForeignKey('users.id'), primary_key=True),
     db.Column('group_id', db.Integer, db.ForeignKey('groups.id'), primary_key=True),
-    db.Column('joined_at', db.DateTime, default=datetime.utcnow)
+    db.Column('joined_at', db.DateTime, default=datetime.now)
 )
 
 class Role(db.Model):
@@ -29,7 +29,7 @@ class User(db.Model, UserMixin):
     last_name = db.Column(db.String(100))
     role_id = db.Column(db.Integer, db.ForeignKey('roles.id'))
     is_active = db.Column(db.Boolean, default=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now)
     
     # Relationships
     messages_sent = db.relationship('Message', foreign_keys='Message.user_id', backref='author', lazy=True)
@@ -56,7 +56,7 @@ class Group(db.Model):
     invite_code = db.Column(db.String(10), unique=True) # For invite links
     is_archived = db.Column(db.Boolean, default=False)
     created_by = db.Column(db.Integer, db.ForeignKey('users.id'))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now)
     messages = db.relationship('Message', backref='group', lazy=True)
     
     # New: Many-to-Many with roles
@@ -88,7 +88,7 @@ class Message(db.Model):
     recipient_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     parent_id = db.Column(db.Integer, db.ForeignKey('messages.id'), nullable=True) # For replies
     is_pinned = db.Column(db.Boolean, default=False)
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    timestamp = db.Column(db.DateTime, default=datetime.now, index=True)
     message_type = db.Column(db.String(20), default='text') # text, voice, file
     file_url = db.Column(db.String(255))
     
@@ -104,11 +104,11 @@ class Expense(db.Model):
     status = db.Column(db.String(20), default='pending') # pending, approved, rejected, paid
     type = db.Column(db.String(10), default='debit') # credit, debit
     is_paid = db.Column(db.Boolean, default=False)
-    bill_date = db.Column(db.DateTime, default=datetime.utcnow)
+    bill_date = db.Column(db.DateTime, default=datetime.now)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     approved_by = db.Column(db.Integer, db.ForeignKey('users.id'))
     bill_url = db.Column(db.String(255))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now)
     user = db.relationship('User', foreign_keys=[user_id], backref='expenses')
 
 class ActivityLog(db.Model):
@@ -117,5 +117,5 @@ class ActivityLog(db.Model):
     action = db.Column(db.String(255), nullable=False)
     details = db.Column(db.Text)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    timestamp = db.Column(db.DateTime, default=datetime.now)
     ip_address = db.Column(db.String(45))
