@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="space-y-8">
+    <header>
+        <h2 class="text-3xl font-bold text-[#1A237E]">History Module</h2>
+        <p class="text-gray-500">Archived projects and completed channel history</p>
+    </header>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for group in groups %}
+        <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 group hover:shadow-md transition">
+            <div class="flex items-center gap-4 mb-4">
+                <div class="w-12 h-12 bg-gray-100 rounded-2xl flex items-center justify-center text-gray-400 group-hover:bg-blue-50 group-hover:text-[#1A237E] transition">
+                    <i data-lucide="archive"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-gray-800">{{ group.name }}</h3>
+                    <p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Completed {{ group.created_at.strftime('%b %Y') if group.created_at else 'N/A' }}</p>
+                </div>
+            </div>
+            
+            <p class="text-sm text-gray-500 mb-6 line-clamp-2">{{ group.description or "No description provided." }}</p>
+            
+            <div class="flex items-center justify-between pt-4 border-t border-gray-50">
+                <span class="text-xs font-bold text-gray-400">{{ group.messages|length if group.messages else 0 }} Messages</span>
+                <a href="/?channel={{ group.id }}" class="flex items-center gap-2 text-[#1A237E] font-bold text-sm hover:underline">
+                    VIEW LOGS <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                </a>
+            </div>
+        </div>
+        {% else %}
+        <div class="col-span-full py-20 text-center bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
+            <i data-lucide="history" class="w-12 h-12 text-gray-300 mx-auto mb-4"></i>
+            <p class="text-gray-400 font-bold">No archived channels found in history.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

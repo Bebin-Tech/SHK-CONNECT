@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="space-y-8">
+    <header class="flex justify-between items-end">
+        <div>
+            <h2 class="text-3xl font-bold text-[#1A237E]">Admin Command Center</h2>
+            <p class="text-gray-500">Global system management and oversight</p>
+        </div>
+    </header>
+
+    <!-- Admin Stats -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="bg-white p-6 rounded-3xl shadow-sm border-t-4 border-blue-500">
+            <h4 class="text-gray-500 text-sm mb-2">System Users</h4>
+            <div class="flex items-center justify-between">
+                <span class="text-3xl font-bold">{{ stats.users }}</span>
+                <i data-lucide="users" class="text-blue-500"></i>
+            </div>
+        </div>
+        <div class="bg-white p-6 rounded-3xl shadow-sm border-t-4 border-purple-500">
+            <h4 class="text-gray-500 text-sm mb-2">Active Channels</h4>
+            <div class="flex items-center justify-between">
+                <span class="text-3xl font-bold">{{ stats.groups }}</span>
+                <i data-lucide="layers" class="text-purple-500"></i>
+            </div>
+        </div>
+        <div class="bg-white p-6 rounded-3xl shadow-sm border-t-4 border-green-500">
+            <h4 class="text-gray-500 text-sm mb-2">Monthly Credit</h4>
+            <div class="flex items-center justify-between">
+                <span class="text-2xl font-bold text-green-600">₹{{ stats.monthly_credit }}</span>
+                <i data-lucide="trending-up" class="text-green-500"></i>
+            </div>
+        </div>
+        <div class="bg-white p-6 rounded-3xl shadow-sm border-t-4 border-red-500">
+            <h4 class="text-gray-500 text-sm mb-2">Monthly Debit</h4>
+            <div class="flex items-center justify-between">
+                <span class="text-2xl font-bold text-red-600">₹{{ stats.monthly_debit }}</span>
+                <i data-lucide="trending-down" class="text-red-500"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- Manage Groups -->
+        <div class="bg-white p-8 rounded-3xl shadow-sm overflow-hidden">
+            <h3 class="text-xl font-bold mb-6">Active Channels</h3>
+            <div class="space-y-4">
+                {% for group in groups %}
+                <div class="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100 hover:border-blue-200 transition">
+                    <div>
+                        <p class="font-bold text-[#1A237E]">{{ group.name }}</p>
+                        <p class="text-[10px] text-gray-400 font-mono">CODE: {{ group.invite_code }}</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="copyToClipboard('{{ request.host_url }}auth/invite/{{ group.invite_code }}')" class="p-2 bg-green-100 text-green-600 rounded-lg hover:bg-green-200 transition" title="Copy Invite Link">
+                            <i data-lucide="link" class="w-4 h-4"></i>
+                        </button>
+                        <a href="{{ url_for('admin.archive_group', group_id=group.id) }}" class="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition" title="Move to History">
+                            <i data-lucide="archive" class="w-4 h-4"></i>
+                        </a>
+                        <a href="{{ url_for('admin.delete_group', group_id=group.id) }}" onclick="return confirm('Permanently delete this channel?')" class="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition" title="Delete Permanently">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Create Group Form -->
+        <div class="bg-white p-8 rounded-3xl shadow-sm">
+            <h3 class="text-xl font-bold mb-6">Create New Channel</h3>
+            <form action="{{ url_for('admin.create_group') }}" method="POST" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-semibold mb-2">Channel Name</label>
+                    <input type="text" name="name" class="w-full p-4 border rounded-2xl outline-none focus:border-[#1A237E]" placeholder="e.g. Sales Team" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold mb-2">Description</label>
+                    <textarea name="description" class="w-full p-4 border rounded-2xl outline-none focus:border-[#1A237E]" placeholder="Group purpose..."></textarea>
+                </div>
+                <button type="submit" class="w-full bg-[#1A237E] text-white p-4 rounded-2xl font-bold hover:bg-[#3949AB] transition">
+                    INITIALIZE CHANNEL
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        alert('Invite link copied to clipboard!');
+    });
+}
+</script>
+{% endblock %}

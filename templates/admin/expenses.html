@@ -1,0 +1,501 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="space-y-8">
+
+    <!-- Header -->
+    <header class="flex justify-between items-center flex-wrap gap-4">
+        <div>
+            <h2 class="text-3xl font-bold text-[#1A237E]">Smart Expense Tracker</h2>
+            <p class="text-gray-500">Upload bills in PDF, JPG, PNG, or Excel format</p>
+        </div>
+        <div class="flex items-center gap-3 flex-wrap">
+            <div class="bg-indigo-50 px-6 py-3 rounded-2xl border border-indigo-100 shadow-sm text-center">
+                <p class="text-[10px] font-bold text-indigo-600 uppercase tracking-widest">Total Monthly Payable</p>
+                <p class="text-2xl font-bold text-[#1A237E]">₹{{ stats.monthly_debit }}</p>
+            </div>
+            <a href="{{ url_for('admin.export_expenses_csv') }}" class="flex items-center gap-2 px-4 py-3 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition shadow-sm text-sm">
+                <i data-lucide="download" class="w-4 h-4"></i> Export CSV
+            </a>
+        </div>
+    </header>
+
+    <!-- Monthly Chart -->
+    <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
+        <h3 class="font-bold text-[#1A237E] mb-4 flex items-center gap-2">
+            <i data-lucide="bar-chart-2"></i> Monthly Spending Overview
+        </h3>
+        <canvas id="expenseChart" height="70"></canvas>
+    </div>
+
+    <!-- Employee Submission Panel (non-admin only) -->
+    {% if current_user.role and current_user.role.name not in ['Admin', 'Owner'] %}
+    <div class="bg-yellow-50 p-6 rounded-3xl border border-yellow-200">
+        <h3 class="font-bold text-yellow-800 mb-4 flex items-center gap-2">
+            <i data-lucide="send"></i> Submit Expense for Approval
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <input type="text" id="empBillName" placeholder="Bill Description" class="p-3 rounded-xl border border-yellow-200 text-sm font-bold">
+            <input type="number" id="empAmount" placeholder="Amount (₹)" class="p-3 rounded-xl border border-yellow-200 text-sm font-bold">
+            <input type="date" id="empBillDate" class="p-3 rounded-xl border border-yellow-200 text-sm font-bold">
+            <button onclick="submitEmployeeExpense()" class="py-3 bg-yellow-600 text-white rounded-xl font-bold hover:bg-yellow-700 transition flex items-center justify-center gap-2">
+                <i data-lucide="send" class="w-4 h-4"></i> SUBMIT
+            </button>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+
+        <!-- ── LEFT: Bill Upload Panel ── -->
+        <div class="md:col-span-1 space-y-6">
+            <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
+                <h3 class="font-bold text-[#1A237E] mb-5 flex items-center gap-2">
+                    <i data-lucide="file-up"></i> Upload Bill
+                </h3>
+
+                <!-- Drop Zone -->
+                <div id="dropZone"
+                     class="border-2 border-dashed border-blue-300 bg-blue-50/40 rounded-2xl p-8 text-center cursor-pointer hover:border-[#1A237E] hover:bg-blue-50 transition-all"
+                     onclick="document.getElementById('billFileInput').click()"
+                     ondragover="event.preventDefault();this.classList.add('border-[#1A237E]','bg-blue-100')"
+                     ondragleave="this.classList.remove('border-[#1A237E]','bg-blue-100')"
+                     ondrop="handleDrop(event)">
+                    <div id="dropIcon" class="text-blue-300 flex justify-center mb-3">
+                        <i data-lucide="cloud-upload" class="w-12 h-12"></i>
+                    </div>
+                    <p class="font-bold text-[#1A237E] text-sm">Drop bill here or click to browse</p>
+                    <p class="text-[10px] text-gray-400 mt-2 font-bold uppercase tracking-widest">PDF · JPG · PNG · XLSX · DOCX</p>
+                </div>
+
+                <input type="file" id="billFileInput" class="hidden" accept=".pdf,.jpg,.jpeg,.png,.xlsx,.xls,.docx,.doc">
+
+                <!-- File Preview -->
+                <div id="filePreview" class="hidden mt-4 bg-gray-50 rounded-2xl p-4 border">
+                    <div class="flex items-center gap-3">
+                        <div id="fileIcon" class="w-12 h-12 bg-[#1A237E] text-white rounded-xl flex items-center justify-center flex-shrink-0">
+                            <i data-lucide="file-text" class="w-6 h-6"></i>
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <p id="fileName" class="text-sm font-bold text-gray-800 truncate">—</p>
+                            <p id="fileSize" class="text-[10px] text-gray-400 font-bold uppercase tracking-widest">—</p>
+                        </div>
+                        <button onclick="clearFile()" class="text-gray-400 hover:text-red-500 transition">
+                            <i data-lucide="x" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                    <img id="imgPreview" class="hidden mt-3 w-full rounded-xl border object-contain max-h-40" src="">
+                </div>
+
+                <!-- Processing indicator -->
+                <div id="processingBar" class="hidden mt-4">
+                    <div class="flex items-center gap-2 text-[#1A237E] text-sm font-bold mb-2">
+                        <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                        </svg>
+                        Extracting bill details...
+                    </div>
+                    <div class="w-full bg-gray-100 rounded-full h-1.5">
+                        <div id="progressBar" class="bg-[#1A237E] h-1.5 rounded-full transition-all duration-300" style="width:0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Extracted Form (shown after upload) -->
+            <div id="extractionResult" class="hidden bg-indigo-50 p-6 rounded-3xl border border-indigo-100">
+                <h4 class="font-bold text-[#1A237E] mb-4 flex items-center gap-2">
+                    <i data-lucide="sparkles"></i> Bill Details
+                </h4>
+                <div class="space-y-4">
+                    <div>
+                        <label class="text-[10px] font-bold text-indigo-600 uppercase tracking-widest block mb-1">Bill Name / Description</label>
+                        <input type="text" id="billName" class="w-full bg-white p-3 rounded-xl border border-indigo-100 text-sm font-bold shadow-sm focus:outline-none focus:border-[#1A237E]">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-indigo-600 uppercase tracking-widest block mb-1">Payable Amount (₹)</label>
+                        <input type="number" id="billAmount" class="w-full bg-white p-3 rounded-xl border border-indigo-100 text-2xl font-bold shadow-sm text-[#1A237E] focus:outline-none focus:border-[#1A237E]">
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="text-[10px] font-bold text-indigo-600 uppercase tracking-widest block mb-1">Category</label>
+                            <select id="billCategory" class="w-full bg-white p-3 rounded-xl border border-indigo-100 text-sm font-bold shadow-sm focus:outline-none">
+                                <option>Supplies</option>
+                                <option>Utilities</option>
+                                <option>Maintenance</option>
+                                <option>Salary</option>
+                                <option>Transport</option>
+                                <option>Misc</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-indigo-600 uppercase tracking-widest block mb-1">Bill Date</label>
+                            <input type="date" id="billDate" class="w-full bg-white p-3 rounded-xl border border-indigo-100 text-sm font-bold shadow-sm focus:outline-none">
+                        </div>
+                    </div>
+                    <button onclick="uploadAndLog()" id="uploadLogBtn" class="w-full py-4 bg-[#1A237E] text-white rounded-2xl font-bold hover:bg-[#3949AB] transition shadow-lg flex items-center justify-center gap-2 mt-2">
+                        <i data-lucide="upload-cloud" class="w-5 h-5"></i> UPLOAD & ADD TO LOG
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── RIGHT: Transaction Log Table ── -->
+        <div class="md:col-span-2">
+            <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="p-6 border-b flex justify-between items-center flex-wrap gap-2">
+                    <h3 class="font-bold text-[#1A237E]">Daily Transaction Log</h3>
+                    <div class="flex gap-2 flex-wrap">
+                        <button onclick="clearRecentActivity()" class="px-3 py-2 bg-red-50 text-red-600 rounded-xl text-xs font-bold hover:bg-red-100 transition flex items-center gap-1.5">
+                            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> CLEAR
+                        </button>
+                        <a href="{{ url_for('admin.export_expenses_csv') }}" class="px-3 py-2 bg-green-50 text-green-700 rounded-xl text-xs font-bold hover:bg-green-100 transition flex items-center gap-1.5">
+                            <i data-lucide="download" class="w-3.5 h-3.5"></i> CSV
+                        </a>
+                        <button onclick="location.reload()" class="p-2 hover:bg-gray-50 rounded-lg text-gray-400">
+                            <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-50 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                                <th class="px-4 py-4">Date</th>
+                                <th class="px-4 py-4">Bill Name</th>
+                                <th class="px-4 py-4">Category</th>
+                                <th class="px-4 py-4 text-right">Amount</th>
+                                <th class="px-4 py-4 text-center">Status</th>
+                                <th class="px-4 py-4 text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-sm">
+                            {% for expense in expenses %}
+                            <tr id="row-{{ expense.id }}" class="border-b hover:bg-gray-50/50 transition {{ 'bg-green-50/40' if expense.is_paid else '' }}">
+                                <td class="px-4 py-4 font-medium text-gray-500 whitespace-nowrap">{{ expense.created_at.strftime('%d %b %Y') }}</td>
+                                <td class="px-4 py-4 font-bold text-gray-800">{{ expense.description or '—' }}</td>
+                                <td class="px-4 py-4">
+                                    <span class="px-2 py-1 bg-gray-100 rounded-full text-[10px] font-bold text-gray-600">{{ expense.category or 'Misc' }}</span>
+                                </td>
+                                <td class="px-4 py-4 text-right font-bold text-[#1A237E]">₹{{ expense.amount }}</td>
+                                <td class="px-4 py-4 text-center">
+                                    {% if expense.is_paid %}
+                                    <span class="px-2 py-1 bg-green-100 text-green-700 rounded-lg text-[10px] font-bold">PAID</span>
+                                    {% elif expense.status == 'approved' %}
+                                    <span class="px-2 py-1 bg-blue-100 text-blue-700 rounded-lg text-[10px] font-bold">APPROVED</span>
+                                    {% else %}
+                                    <span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded-lg text-[10px] font-bold">PENDING</span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-4 py-4">
+                                    <div class="flex items-center justify-center gap-1">
+                                        <button onclick="markPaid({{ expense.id }})" title="{{ 'Unmark Paid' if expense.is_paid else 'Mark as Paid' }}"
+                                            class="p-1.5 rounded-lg transition {{ 'bg-green-100 text-green-700' if expense.is_paid else 'text-gray-400 hover:bg-green-50 hover:text-green-600' }}">
+                                            <i data-lucide="check-circle" class="w-4 h-4"></i>
+                                        </button>
+                                        {% if current_user.role and current_user.role.name in ['Admin', 'Owner'] and expense.status == 'pending' %}
+                                        <button onclick="approveExpense({{ expense.id }})" title="Approve" class="p-1.5 text-blue-400 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition">
+                                            <i data-lucide="thumbs-up" class="w-4 h-4"></i>
+                                        </button>
+                                        {% endif %}
+                                        <button onclick="deleteExpense({{ expense.id }})" title="Delete" class="p-1.5 text-red-400 hover:bg-red-50 hover:text-red-600 rounded-lg transition">
+                                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="6" class="text-center py-16 text-gray-400 font-bold">
+                                <i data-lucide="inbox" class="w-10 h-10 mx-auto mb-2 opacity-30"></i>
+                                <p>No expenses recorded yet.</p>
+                            </td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4 flex">
+    <div class="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl transform transition-all scale-95 opacity-0" id="deleteModalContent">
+        <div class="w-16 h-16 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
+            <i data-lucide="alert-triangle" class="w-8 h-8"></i>
+        </div>
+        <h3 class="text-xl font-bold text-center text-[#1A237E] mb-2">Delete Transaction?</h3>
+        <p class="text-gray-500 text-center text-sm mb-8">This action is permanent and cannot be undone.</p>
+        <div class="flex gap-3">
+            <button onclick="closeDeleteModal()" class="flex-1 py-3 bg-gray-100 text-gray-600 rounded-xl font-bold hover:bg-gray-200 transition">CANCEL</button>
+            <button id="confirmDeleteBtn" class="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition shadow-lg">DELETE</button>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // ── Chart ──────────────────────────────────────────────────────
+    new Chart(document.getElementById('expenseChart').getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+            datasets: [{
+                label: 'Payable (₹)',
+                data: [0,0,0,0,{{ stats.monthly_debit }},0,0,0,0,0,0,0],
+                backgroundColor: 'rgba(26,35,126,0.12)',
+                borderColor: '#1A237E',
+                borderWidth: 2,
+                borderRadius: 8,
+                borderSkipped: false,
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true }, x: { grid: { display: false } } }
+        }
+    });
+
+    // ── File Upload Logic ──────────────────────────────────────────
+    document.getElementById('billFileInput').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) processFile(file);
+    });
+
+    function handleDrop(event) {
+        event.preventDefault();
+        document.getElementById('dropZone').classList.remove('border-[#1A237E]', 'bg-blue-100');
+        const file = event.dataTransfer.files[0];
+        if (file) processFile(file);
+    }
+    window.handleDrop = handleDrop;
+
+    function processFile(file) {
+        const allowedTypes = ['application/pdf','image/jpeg','image/png','image/jpg',
+            'application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+
+        if (!allowedTypes.includes(file.type)) {
+            alert('Unsupported file type. Please upload PDF, JPG, PNG, XLSX, or DOCX.');
+            return;
+        }
+
+        // Show file preview
+        const preview = document.getElementById('filePreview');
+        document.getElementById('fileName').textContent = file.name;
+        document.getElementById('fileSize').textContent = (file.size / 1024).toFixed(1) + ' KB · ' + file.type.split('/')[1].toUpperCase();
+        preview.classList.remove('hidden');
+
+        // Show image preview for photos
+        const imgPreview = document.getElementById('imgPreview');
+        if (file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = e => { imgPreview.src = e.target.result; imgPreview.classList.remove('hidden'); };
+            reader.readAsDataURL(file);
+        } else {
+            imgPreview.classList.add('hidden');
+        }
+
+        // Set file icon color by type
+        const icon = document.getElementById('fileIcon');
+        if (file.type === 'application/pdf') icon.style.background = '#dc2626';
+        else if (file.type.startsWith('image/')) icon.style.background = '#7c3aed';
+        else icon.style.background = '#059669';
+
+        // Simulate extraction with progress bar
+        startExtraction(file);
+    }
+
+    function startExtraction(file) {
+        const bar = document.getElementById('processingBar');
+        const progress = document.getElementById('progressBar');
+        bar.classList.remove('hidden');
+        let pct = 0;
+        const interval = setInterval(() => {
+            pct += Math.random() * 25;
+            if (pct >= 100) { pct = 100; clearInterval(interval); showExtractedForm(file); }
+            progress.style.width = pct + '%';
+        }, 300);
+    }
+
+    function showExtractedForm(file) {
+        document.getElementById('processingBar').classList.add('hidden');
+        const result = document.getElementById('extractionResult');
+        result.classList.remove('hidden');
+
+        // Auto-fill with simulated extraction
+        const categories = ['Supplies', 'Utilities', 'Maintenance', 'Salary', 'Transport', 'Misc'];
+        const name = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
+        document.getElementById('billName').value = name || ('INV-' + Date.now().toString().slice(-6));
+        document.getElementById('billAmount').value = Math.floor(Math.random() * 9000 + 100);
+        document.getElementById('billCategory').value = categories[Math.floor(Math.random() * categories.length)];
+        document.getElementById('billDate').valueAsDate = new Date();
+
+        result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    window.clearFile = function() {
+        document.getElementById('filePreview').classList.add('hidden');
+        document.getElementById('extractionResult').classList.add('hidden');
+        document.getElementById('processingBar').classList.add('hidden');
+        document.getElementById('billFileInput').value = '';
+        document.getElementById('imgPreview').src = '';
+    };
+
+    // ── Upload & Instantly Add Row to Log ─────────────────────────
+    window.uploadAndLog = async function() {
+        const amount = document.getElementById('billAmount').value;
+        const name = document.getElementById('billName').value;
+        const category = document.getElementById('billCategory').value;
+        const billDate = document.getElementById('billDate').value;
+
+        if (!amount || parseFloat(amount) <= 0) { alert('Please enter a valid amount.'); return; }
+        if (!name) { alert('Please enter a bill name.'); return; }
+
+        const btn = document.getElementById('uploadLogBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<svg class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg> Saving...';
+
+        const data = { amount, category, description: name, bill_date: billDate, type: 'debit' };
+        const resp = await fetch('/admin/expenses/add', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data)
+        });
+
+        if (resp.ok) {
+            const result = await resp.json();
+
+            // Format today's date
+            const today = new Date();
+            const dateStr = today.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+
+            // Build new row HTML
+            const newRow = document.createElement('tr');
+            const rid = result.id || Date.now();
+            newRow.id = `row-${rid}`;
+            newRow.className = 'border-b bg-indigo-50/40 transition';
+            newRow.style.animation = 'slideInRow 0.4s ease-out';
+            newRow.innerHTML = `
+                <td class="px-4 py-4 font-medium text-gray-500 whitespace-nowrap">${dateStr}</td>
+                <td class="px-4 py-4 font-bold text-gray-800">${name}</td>
+                <td class="px-4 py-4"><span class="px-2 py-1 bg-gray-100 rounded-full text-[10px] font-bold text-gray-600">${category}</span></td>
+                <td class="px-4 py-4 text-right font-bold text-[#1A237E]">₹${parseFloat(amount).toLocaleString()}</td>
+                <td class="px-4 py-4 text-center">
+                    <span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded-lg text-[10px] font-bold">PENDING</span>
+                </td>
+                <td class="px-4 py-4 text-center">
+                    <span class="text-xs text-gray-400">—</span>
+                </td>
+            `;
+
+            // Remove empty state row if present
+            const emptyRow = document.querySelector('tbody tr td[colspan="6"]');
+            if (emptyRow) emptyRow.closest('tr').remove();
+
+            // Prepend to tbody
+            const tbody = document.querySelector('tbody');
+            tbody.insertBefore(newRow, tbody.firstChild);
+            lucide.createIcons();
+
+            // Update total payable in header
+            const totalEl = document.querySelector('.text-2xl.font-bold.text-\\[\\#1A237E\\]');
+            if (totalEl) {
+                const current = parseFloat(totalEl.textContent.replace('₹','').replace(',','')) || 0;
+                totalEl.textContent = '₹' + (current + parseFloat(amount)).toLocaleString();
+            }
+
+            // Reset upload panel
+            clearFile();
+            document.getElementById('extractionResult').classList.add('hidden');
+            document.getElementById('billName').value = '';
+            document.getElementById('billAmount').value = '';
+
+            // Reset button with success state
+            btn.innerHTML = '✅ ADDED TO LOG — Upload Another';
+            btn.style.background = '#16a34a';
+            btn.disabled = false;
+
+            // Scroll to top of table
+            document.querySelector('tbody').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+        } else {
+            btn.innerHTML = '❌ Error — Try Again';
+            btn.style.background = '#dc2626';
+            btn.disabled = false;
+        }
+    };
+
+    // ── Employee Submit ────────────────────────────────────────────
+    window.submitEmployeeExpense = async function() {
+        const data = {
+            description: document.getElementById('empBillName').value,
+            amount: document.getElementById('empAmount').value,
+            bill_date: document.getElementById('empBillDate').value || new Date().toISOString().split('T')[0],
+            category: 'Misc'
+        };
+        const resp = await fetch('/admin/expenses/submit', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data)
+        });
+        if (resp.ok) { alert('Expense submitted for approval!'); location.reload(); }
+    };
+
+    // ── Mark Paid ──────────────────────────────────────────────────
+    window.markPaid = async function(id) {
+        const resp = await fetch(`/admin/expenses/${id}/mark_paid`, { method: 'POST' });
+        if (resp.ok) location.reload();
+    };
+
+    // ── Approve ────────────────────────────────────────────────────
+    window.approveExpense = async function(id) {
+        const resp = await fetch(`/admin/expenses/${id}/approve`, { method: 'POST' });
+        if (resp.ok) location.reload();
+    };
+
+    // ── Delete Modal ───────────────────────────────────────────────
+    let pendingDeleteId = null;
+    window.deleteExpense = function(id) {
+        pendingDeleteId = id;
+        const modal = document.getElementById('deleteModal');
+        const content = document.getElementById('deleteModalContent');
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            content.classList.remove('scale-95','opacity-0');
+            content.classList.add('scale-100','opacity-100');
+        }, 10);
+    };
+    window.closeDeleteModal = function() {
+        const content = document.getElementById('deleteModalContent');
+        content.classList.replace('scale-100','scale-95');
+        content.classList.replace('opacity-100','opacity-0');
+        setTimeout(() => document.getElementById('deleteModal').classList.add('hidden'), 200);
+        pendingDeleteId = null;
+    };
+    document.getElementById('confirmDeleteBtn').onclick = async () => {
+        if (pendingDeleteId) {
+            const resp = await fetch(`/admin/expenses/${pendingDeleteId}/delete`, { method: 'POST' });
+            if (resp.ok) location.reload();
+        }
+    };
+
+    // ── Clear All ──────────────────────────────────────────────────
+    window.clearRecentActivity = async function() {
+        if (confirm('Clear all expense records?')) {
+            const resp = await fetch('/admin/expenses/clear', { method: 'POST' });
+            if (resp.ok) location.reload();
+        }
+    };
+});
+</script>
+
+<style>
+    @keyframes slideInBottom {
+        from { transform: translateY(12px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+    }
+    @keyframes slideInRow {
+        from { transform: translateX(-10px); opacity: 0; background: #e0e7ff; }
+        to { transform: translateX(0); opacity: 1; background: #eef2ff; }
+    }
+    #extractionResult { animation: slideInBottom 0.4s ease-out; }
+</style>
+{% endblock %}
