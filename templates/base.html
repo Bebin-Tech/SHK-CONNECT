@@ -33,6 +33,14 @@
                     <span class="text-[10px] font-bold uppercase tracking-widest bg-blue-100 text-blue-700 px-3 py-1 rounded-full">🛡 Admin</span>
                 {% elif role == 'Owner' %}
                     <span class="text-[10px] font-bold uppercase tracking-widest bg-purple-100 text-purple-700 px-3 py-1 rounded-full">👑 Owner</span>
+                {% elif role == 'ED' %}
+                    <span class="text-[10px] font-bold uppercase tracking-widest bg-rose-100 text-rose-700 px-3 py-1 rounded-full">👔 ED</span>
+                {% elif role == 'Manager' %}
+                    <span class="text-[10px] font-bold uppercase tracking-widest bg-amber-100 text-amber-700 px-3 py-1 rounded-full">💼 Manager</span>
+                {% elif role == 'Accounts' %}
+                    <span class="text-[10px] font-bold uppercase tracking-widest bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full">🧾 Accounts</span>
+                {% elif role == 'Staff' %}
+                    <span class="text-[10px] font-bold uppercase tracking-widest bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full">🛠 Staff</span>
                 {% else %}
                     <span class="text-[10px] font-bold uppercase tracking-widest bg-gray-100 text-gray-500 px-3 py-1 rounded-full">👤 Member</span>
                 {% endif %}
@@ -49,40 +57,22 @@
                         <span class="font-semibold">Team Chat</span>
                     </a>
 
-                    <!-- Expenses — ALL roles (filtered by backend) -->
-                    <a href="/admin/expenses" class="nav-link flex items-center gap-3 p-4 rounded-2xl transition {% if request.path == '/admin/expenses' %}active{% endif %}">
-                        <i data-lucide="wallet" class="w-5 h-5"></i>
-                        <span class="font-semibold">
-                            {% if role in ['Admin', 'Owner'] %}Expense Tracker{% else %}My Expenses{% endif %}
-                        </span>
-                    </a>
-
                     <!-- History — ALL roles (filtered by backend) -->
                     <a href="/admin/history" class="nav-link flex items-center gap-3 p-4 rounded-2xl transition {% if request.path == '/admin/history' %}active{% endif %}">
                         <i data-lucide="archive" class="w-5 h-5"></i>
                         <span class="font-semibold">History</span>
                     </a>
 
-                    {% if role in ['Admin', 'Owner'] %}
+                    {% if role == 'Admin' %}
                     <div class="pt-3">
                         <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 px-2">Management</p>
-
-                        <!-- Dashboard — Admin & Owner -->
-                        <a href="/admin" class="nav-link flex items-center gap-3 p-4 rounded-2xl transition {% if request.path == '/admin' %}active{% endif %}">
-                            <i data-lucide="layout-grid" class="w-5 h-5"></i>
-                            <span class="font-semibold">Dashboard</span>
-                        </a>
-                    </div>
-                    {% endif %}
-
-                    {% if role == 'Admin' %}
                         <!-- User Management — Admin only -->
                         <a href="/admin/users" class="nav-link flex items-center gap-3 p-4 rounded-2xl transition {% if request.path == '/admin/users' %}active{% endif %}">
                             <i data-lucide="users" class="w-5 h-5"></i>
                             <span class="font-semibold">User Directory</span>
                         </a>
+                    </div>
                     {% endif %}
-
                 </nav>
             </div>
 

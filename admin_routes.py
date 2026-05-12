@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_required, current_user
-from models import db, User, Role, Group, Message, Expense
+from models import db, User, Role, Group, Message
 from functools import wraps
 
 admin_bp = Blueprint('admin', __name__)
@@ -33,33 +33,6 @@ def get_user_role():
         return current_user.role.name
     return 'Member'
 
-# ─── Admin Dashboard (Admin only) ─────────────────────────────────────────────
-
-@admin_bp.route('/')
-@login_required
-@admin_required
-def index():
-    from sqlalchemy import func
-    from datetime import datetime
-
-    now = datetime.utcnow()
-    month_start = datetime(now.year, now.month, 1)
-
-    stats = {
-        'users': User.query.count(),
-        'groups': Group.query.filter_by(is_archived=False).count(),
-        'pending_expenses': Expense.query.filter_by(status='pending').count(),
-        'monthly_credit': db.session.query(func.sum(Expense.amount)).filter(
-            Expense.type == 'credit',
-            Expense.created_at >= month_start
-        ).scalar() or 0,
-        'monthly_debit': db.session.query(func.sum(Expense.amount)).filter(
-            Expense.type == 'debit',
-            Expense.created_at >= month_start
-        ).scalar() or 0
-    }
-    groups = Group.query.filter_by(is_archived=False).all()
-    return render_template('admin/dashboard.html', title='Admin Panel', stats=stats, groups=groups)
 
 # ─── User Management (Admin only) ─────────────────────────────────────────────
 
@@ -211,146 +184,16 @@ def history():
                            if current_user in g.members]
     return render_template('admin/history.html', title='History', groups=archived_groups)
 
-# ─── Expenses (Role-filtered) ─────────────────────────────────────────────────
-
-@admin_bp.route('/expenses')
+@admin_bp.route('/history/<int:group_id>')
 @login_required
-def expenses():
-    from sqlalchemy import func
-    from datetime import datetime
-
+def history_detail(group_id):
     role = get_user_role()
-    now = datetime.utcnow()
-    month_start = datetime(now.year, now.month, 1)
+    group = Group.query.get_or_404(group_id)
+    
+    # Security check
+    if role == 'Member' and current_user not in group.members:
+        flash('Access denied.', 'danger')
+        return redirect(url_for('admin.history'))
+        
+    return render_template('admin/history_detail.html', title=f'History: {group.name}', group=group)
 
-    # Admins/Owners see ALL expenses; Members see only their own
-    if role in ['Admin', 'Owner']:
-        expenses_list = Expense.query.order_by(Expense.created_at.desc()).all()
-        monthly_credit = db.session.query(func.sum(Expense.amount)).filter(
-            Expense.type == 'credit', Expense.created_at >= month_start).scalar() or 0
-        monthly_debit = db.session.query(func.sum(Expense.amount)).filter(
-            Expense.type == 'debit', Expense.created_at >= month_start).scalar() or 0
-    else:
-        expenses_list = Expense.query.filter_by(user_id=current_user.id).order_by(Expense.created_at.desc()).all()
-        monthly_credit = db.session.query(func.sum(Expense.amount)).filter(
-            Expense.type == 'credit', Expense.user_id == current_user.id,
-            Expense.created_at >= month_start).scalar() or 0
-        monthly_debit = db.session.query(func.sum(Expense.amount)).filter(
-            Expense.type == 'debit', Expense.user_id == current_user.id,
-            Expense.created_at >= month_start).scalar() or 0
-
-    stats = {'monthly_credit': monthly_credit, 'monthly_debit': monthly_debit}
-    return render_template('admin/expenses.html', title='Expense Tracker',
-                           stats=stats, expenses=expenses_list)
-
-@admin_bp.route('/expenses/add', methods=['POST'])
-@login_required
-def add_expense():
-    """Admin/Owner can add expenses directly."""
-    if get_user_role() not in ['Admin', 'Owner']:
-        return jsonify({'error': 'Unauthorized'}), 403
-    data = request.json
-    expense = Expense(
-        amount=float(data.get('amount')),
-        category=data.get('category'),
-        description=data.get('description'),
-        type=data.get('type', 'debit'),
-        user_id=current_user.id,
-        status='approved'  # Admin-added expenses are auto-approved
-    )
-    db.session.add(expense)
-    db.session.commit()
-    return jsonify({'success': True, 'id': expense.id})
-
-@admin_bp.route('/expenses/submit', methods=['POST'])
-@login_required
-def submit_expense():
-    """Members submit expenses for approval."""
-    from datetime import datetime as dt
-    data = request.json
-    bill_date = dt.strptime(data.get('bill_date', dt.utcnow().strftime('%Y-%m-%d')), '%Y-%m-%d')
-    expense = Expense(
-        amount=float(data.get('amount')),
-        category=data.get('category', 'Misc'),
-        description=data.get('description'),
-        type='debit',
-        status='pending',
-        is_paid=False,
-        bill_date=bill_date,
-        user_id=current_user.id
-    )
-    db.session.add(expense)
-    db.session.commit()
-    return jsonify({'success': True, 'id': expense.id})
-
-@admin_bp.route('/expenses/<int:expense_id>/approve', methods=['POST'])
-@login_required
-@admin_or_owner_required
-def approve_expense(expense_id):
-    expense = Expense.query.get_or_404(expense_id)
-    expense.status = 'approved'
-    expense.approved_by = current_user.id
-    db.session.commit()
-    return jsonify({'success': True})
-
-@admin_bp.route('/expenses/<int:expense_id>/reject', methods=['POST'])
-@login_required
-@admin_or_owner_required
-def reject_expense(expense_id):
-    expense = Expense.query.get_or_404(expense_id)
-    expense.status = 'rejected'
-    db.session.commit()
-    return jsonify({'success': True})
-
-@admin_bp.route('/expenses/<int:expense_id>/mark_paid', methods=['POST'])
-@login_required
-@admin_or_owner_required
-def mark_expense_paid(expense_id):
-    expense = Expense.query.get_or_404(expense_id)
-    expense.is_paid = not expense.is_paid
-    expense.status = 'paid' if expense.is_paid else 'approved'
-    db.session.commit()
-    return jsonify({'success': True, 'is_paid': expense.is_paid})
-
-@admin_bp.route('/expenses/<int:expense_id>/delete', methods=['POST'])
-@login_required
-def delete_expense(expense_id):
-    expense = Expense.query.get_or_404(expense_id)
-    if expense.user_id == current_user.id or get_user_role() in ['Admin', 'Owner']:
-        db.session.delete(expense)
-        db.session.commit()
-        return jsonify({'success': True})
-    return jsonify({'error': 'Unauthorized'}), 403
-
-@admin_bp.route('/expenses/clear', methods=['POST'])
-@login_required
-@admin_required
-def clear_expenses():
-    Expense.query.delete()
-    db.session.commit()
-    return jsonify({'success': True})
-
-@admin_bp.route('/expenses/export/csv')
-@login_required
-@admin_or_owner_required
-def export_expenses_csv():
-    import csv, io
-    from flask import Response
-    expenses = Expense.query.order_by(Expense.created_at.desc()).all()
-    output = io.StringIO()
-    writer = csv.writer(output)
-    writer.writerow(['Date', 'Bill Name', 'Category', 'Amount', 'Type', 'Status', 'Paid', 'Submitted By'])
-    for e in expenses:
-        writer.writerow([
-            e.created_at.strftime('%d %b %Y'),
-            e.description or '',
-            e.category or '',
-            e.amount,
-            e.type,
-            e.status,
-            'Yes' if e.is_paid else 'No',
-            e.user.username if e.user else 'Unknown'
-        ])
-    output.seek(0)
-    return Response(output, mimetype='text/csv',
-                    headers={"Content-Disposition": "attachment;filename=expenses.csv"})

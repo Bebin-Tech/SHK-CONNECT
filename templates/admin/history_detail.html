@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="space-y-6">
+  <!-- Header -->
+  <header class="flex justify-between items-center">
+    <div class="flex items-center gap-4">
+      <a href="{{ url_for('admin.history') }}" class="p-2 hover:bg-gray-100 rounded-xl transition text-gray-400">
+        <i data-lucide="arrow-left"></i>
+      </a>
+      <div>
+        <h2 class="text-2xl font-bold text-[#1A237E]">{{ group.name }} <span class="text-xs font-normal bg-gray-100 text-gray-400 px-2 py-0.5 rounded-full ml-2">ARCHIVED</span></h2>
+        <p class="text-gray-400 text-sm">Archived Channel Message History</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-3">
+        <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">
+            {{ group.messages|length }} Total Messages
+        </span>
+    </div>
+  </header>
+
+  <!-- Message Log -->
+  <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden flex flex-col h-[70vh]">
+    <div class="p-4 border-b bg-gray-50 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+            <i data-lucide="book-open" class="w-4 h-4 text-[#1A237E]"></i>
+            <span class="text-sm font-bold text-[#1A237E]">Transcript Log</span>
+        </div>
+        <button onclick="window.print()" class="text-xs font-bold text-gray-400 hover:text-[#1A237E] flex items-center gap-1">
+            <i data-lucide="printer" class="w-3.5 h-3.5"></i> PRINT LOG
+        </button>
+    </div>
+
+    <div class="flex-1 overflow-y-auto p-6 space-y-6 bg-gray-50/20">
+      {% for msg in group.messages %}
+      {% if not msg.parent_id %}
+      <div class="flex items-start gap-4">
+        {% set r = msg.author.role.name if msg.author and msg.author.role else 'Member' %}
+        <div class="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center font-bold text-sm
+                    {% if r=='Admin' %}bg-blue-100 text-blue-700{% elif r=='Owner' %}bg-purple-100 text-purple-700{% else %}bg-orange-100 text-orange-600{% endif %}">
+          {{ msg.author.username[0].upper() if msg.author else '?' }}
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 mb-1">
+            <span class="text-sm font-bold text-gray-800">{{ msg.author.username if msg.author else 'Unknown' }}</span>
+            <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase
+                        {% if r=='Admin' %}bg-blue-100 text-blue-600{% elif r=='Owner' %}bg-purple-100 text-purple-600{% else %}bg-gray-100 text-gray-500{% endif %}">{{ r }}</span>
+            <span class="text-[10px] text-gray-400">{{ msg.timestamp.strftime('%d %b %Y, %I:%M %p') }}</span>
+          </div>
+
+          {% if msg.message_type == 'file' and msg.file_url %}
+            <div class="mt-2 p-3 rounded-2xl border bg-white shadow-sm flex items-center gap-3 max-w-sm">
+                <div class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
+                    <i data-lucide="file" class="w-5 h-5 text-[#1A237E]"></i>
+                </div>
+                <div class="min-w-0">
+                    <p class="text-xs font-bold text-gray-800 truncate">{{ msg.content }}</p>
+                    <a href="{{ msg.file_url }}" target="_blank" class="text-[10px] text-blue-500 hover:underline font-bold">VIEW ATTACHMENT</a>
+                </div>
+            </div>
+          {% else %}
+            <div class="p-4 rounded-2xl bg-white border text-sm text-gray-700 shadow-sm leading-relaxed max-w-2xl">
+              {{ msg.content }}
+            </div>
+          {% endif %}
+
+          <!-- Threaded Replies -->
+          {% if msg.replies %}
+          <div class="mt-3 ml-4 border-l-2 border-gray-100 pl-4 space-y-4">
+            {% for rep in msg.replies %}
+            <div class="flex items-start gap-3">
+              {% set rr = rep.author.role.name if rep.author and rep.author.role else 'Member' %}
+              <div class="w-7 h-7 rounded-lg flex-shrink-0 flex items-center justify-center font-bold text-[10px]
+                          {% if rr=='Admin' %}bg-blue-100 text-blue-700{% elif rr=='Owner' %}bg-purple-100 text-purple-700{% else %}bg-orange-100 text-orange-600{% endif %}">
+                {{ rep.author.username[0].upper() if rep.author else '?' }}
+              </div>
+              <div>
+                <div class="flex items-center gap-2 mb-0.5">
+                  <span class="text-[11px] font-bold text-gray-700">{{ rep.author.username }}</span>
+                  <span class="text-[10px] text-gray-400">{{ rep.timestamp.strftime('%I:%M %p') }}</span>
+                </div>
+                <div class="p-3 rounded-xl bg-gray-100 text-xs text-gray-600 max-w-xl">{{ rep.content }}</div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+      {% else %}
+      <div class="h-full flex flex-col items-center justify-center text-center opacity-40">
+        <i data-lucide="inbox" class="w-12 h-12 mb-2"></i>
+        <p class="font-bold">No messages found in this history log.</p>
+      </div>
+      {% endfor %}
+    </div>
+    
+    <div class="p-4 bg-gray-50 border-t text-center">
+        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">End of Transcript · SHK Industries Workflow History</p>
+    </div>
+  </div>
+</div>
+{% endblock %}

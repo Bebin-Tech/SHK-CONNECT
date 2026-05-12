@@ -35,7 +35,7 @@ def load_user(user_id):
     return User.query.get(int(user_id))
 
 def seed_roles():
-    roles = ['Admin', 'Owner', 'Member']
+    roles = ['Admin', 'Owner', 'Manager', 'Staff', 'Accounts', 'ED', 'Member']
     for role_name in roles:
         if not Role.query.filter_by(name=role_name).first():
             db.session.add(Role(name=role_name))

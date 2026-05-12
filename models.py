@@ -42,6 +42,12 @@ class User(db.Model, UserMixin):
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
+# Association table for Role-based Group Access
+group_roles = db.Table('group_roles',
+    db.Column('group_id', db.Integer, db.ForeignKey('groups.id'), primary_key=True),
+    db.Column('role_id', db.Integer, db.ForeignKey('roles.id'), primary_key=True)
+)
+
 class Group(db.Model):
     __tablename__ = 'groups'
     id = db.Column(db.Integer, primary_key=True)
@@ -52,6 +58,9 @@ class Group(db.Model):
     created_by = db.Column(db.Integer, db.ForeignKey('users.id'))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     messages = db.relationship('Message', backref='group', lazy=True)
+    
+    # New: Many-to-Many with roles
+    roles = db.relationship('Role', secondary=group_roles, backref=db.backref('groups', lazy='dynamic'))
 
 class Workspace(db.Model):
     __tablename__ = 'workspaces'
@@ -74,12 +83,12 @@ class Message(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     content = db.Column(db.Text, nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
-    group_id = db.Column(db.Integer, db.ForeignKey('groups.id'), nullable=True)
+    group_id = db.Column(db.Integer, db.ForeignKey('groups.id'), nullable=True, index=True)
     channel_id = db.Column(db.Integer, db.ForeignKey('channels.id'), nullable=True)
     recipient_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     parent_id = db.Column(db.Integer, db.ForeignKey('messages.id'), nullable=True) # For replies
     is_pinned = db.Column(db.Boolean, default=False)
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     message_type = db.Column(db.String(20), default='text') # text, voice, file
     file_url = db.Column(db.String(255))
     

@@ -1,45 +1,106 @@
 import os
-from flask import Blueprint, render_template, request, jsonify
+from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for
 from flask_login import login_required, current_user
-from models import db, Message, Group
+from models import db, Message, Group, Role
 from werkzeug.utils import secure_filename
 
 chat_bp = Blueprint('chat', __name__)
 
-# Helper to save files
-def save_uploaded_file(file, folder='docs'):
-    if not file:
-        return None
-    
-    upload_path = os.path.join('static', 'uploads', folder)
-    if not os.path.exists(upload_path):
-        os.makedirs(upload_path)
-    
-    filename = secure_filename(file.filename)
-    file.save(os.path.join(upload_path, filename))
-    return f'/static/uploads/{folder}/{filename}'
+# ... (helper functions)
 
 @chat_bp.route('/')
 @chat_bp.route('/<int:group_id>')
 @login_required
 def index(group_id=None):
-    role = current_user.role.name if current_user.role else 'Member'
+    role_obj = current_user.role
+    role_name = role_obj.name if role_obj else 'Member'
 
-    # Admins/Owners see all groups; Members see only their groups
-    if role in ['Admin', 'Owner']:
+    # Groups where user is a member OR user's role is connected
+    from sqlalchemy import or_
+    
+    if role_name in ['Admin', 'Owner']:
+        # Admins see everything active
         groups = Group.query.filter_by(is_archived=False).order_by(Group.created_at.asc()).all()
     else:
-        groups = [g for g in current_user.groups if not g.is_archived]
+        # Filter groups: (not archived) AND (user is member OR group has user's role)
+        groups = Group.query.filter(Group.is_archived == False).filter(
+            or_(
+                Group.members.any(id=current_user.id),
+                Group.roles.any(id=current_user.role_id)
+            )
+        ).order_by(Group.created_at.asc()).all()
 
     group = None
+    messages = []
     if group_id:
         group = Group.query.get_or_404(group_id)
-        # Members can only view groups they belong to
-        if role == 'Member' and current_user not in group.members:
-            flash('You are not a member of this channel.', 'danger')
+        # Access check
+        is_member = current_user in group.members
+        role_connected = role_obj in group.roles if role_obj else False
+        
+        if role_name not in ['Admin', 'Owner'] and not (is_member or role_connected):
+            flash('You do not have access to this channel.', 'danger')
             return redirect(url_for('chat.index'))
+            
+        # Pagination: Load latest 50 top-level messages
+        messages = Message.query.filter_by(group_id=group_id, parent_id=None)\
+                               .order_by(Message.timestamp.desc())\
+                               .limit(50).all()
+        messages.reverse() # Show in chronological order
 
-    return render_template('chat/index.html', title='Team Chat', group=group, groups=groups)
+    all_roles = Role.query.all()
+    return render_template('chat/index.html', title='Team Chat', group=group, groups=groups, all_roles=all_roles, messages=messages)
+
+@chat_bp.route('/load_history/<int:group_id>')
+@login_required
+def load_history(group_id):
+    # Offset-based pagination for older messages
+    offset = request.args.get('offset', 0, type=int)
+    messages = Message.query.filter_by(group_id=group_id, parent_id=None)\
+                           .order_by(Message.timestamp.desc())\
+                           .offset(offset).limit(50).all()
+    
+    # We return them in descending order for the frontend to prepend
+    results = []
+    for m in messages:
+        results.append({
+            'id': m.id,
+            'username': m.author.username if m.author else 'Unknown',
+            'role': m.author.role.name if m.author and m.author.role else 'Member',
+            'content': m.content,
+            'timestamp': m.timestamp.strftime('%I:%M %p'),
+            'file_url': m.file_url,
+            'file_type': m.message_type if m.message_type != 'text' else None,
+            # Simple reply handling for history
+            'replies': [{
+                'username': r.author.username,
+                'content': r.content,
+                'timestamp': r.timestamp.strftime('%I:%M %p')
+            } for r in m.replies]
+        })
+    return jsonify(results)
+
+@chat_bp.route('/connect_roles/<int:group_id>', methods=['POST'])
+@login_required
+def connect_roles(group_id):
+    group = Group.query.get_or_404(group_id)
+    
+    # Only Admin, Owner, or Group Creator can connect roles
+    role_name = current_user.role.name if current_user.role else 'Member'
+    if role_name not in ['Admin', 'Owner'] and group.created_by != current_user.id:
+        return jsonify({'error': 'Unauthorized'}), 403
+        
+    role_ids = request.form.getlist('role_ids')
+    
+    # Clear existing roles and add selected ones
+    group.roles = []
+    for rid in role_ids:
+        r = Role.query.get(rid)
+        if r:
+            group.roles.append(r)
+            
+    db.session.commit()
+    return jsonify({'success': True})
 
 ALLOWED_EXTENSIONS = {
     'image': {'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'},
@@ -94,6 +155,34 @@ def upload():
         'size': size_bytes
     }), 200
     
+@chat_bp.route('/create_group', methods=['POST'])
+@login_required
+def create_group():
+    import string, random
+    name = request.form.get('name')
+    desc = request.form.get('description')
+    invite_code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+
+    if name:
+        group = Group(name=name, description=desc, created_by=current_user.id, invite_code=invite_code)
+        group.members.append(current_user)
+        db.session.add(group)
+        db.session.commit()
+        return jsonify({'success': True, 'id': group.id})
+    return jsonify({'error': 'Name is required'}), 400
+
+@chat_bp.route('/archive_group/<int:group_id>', methods=['POST'])
+@login_required
+def archive_group(group_id):
+    role = current_user.role.name if current_user.role else 'Member'
+    if role not in ['Admin', 'Owner']:
+        return jsonify({'error': 'Unauthorized'}), 403
+        
+    group = Group.query.get_or_404(group_id)
+    group.is_archived = True
+    db.session.commit()
+    return jsonify({'success': True})
+
 @chat_bp.route('/search')
 @login_required
 def search():

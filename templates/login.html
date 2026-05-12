@@ -6,10 +6,30 @@
     <title>Login - SHK Industries</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <style>body { font-family: 'Outfit', sans-serif; }</style>
+    <style>
+        body { 
+            font-family: 'Outfit', sans-serif; 
+            background: radial-gradient(circle at top right, #FDFCFB 0%, #E2D1C3 100%),
+                        radial-gradient(circle at bottom left, #E3F2FD, #BBDEFB);
+            background: radial-gradient(circle at 20% 20%, rgba(26, 35, 126, 0.05), transparent),
+                        radial-gradient(circle at 80% 80%, rgba(212, 175, 55, 0.1), transparent),
+                        linear-gradient(135deg, #FFFFFF 0%, #F5F7FA 100%);
+            background-attachment: fixed;
+            min-height: screen;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+    </style>
 </head>
-<body class="bg-gradient-to-br from-[#1A237E] to-[#3949AB] min-h-screen flex items-center justify-center p-6">
-    <div class="bg-white p-10 rounded-3xl shadow-2xl w-full" style="max-width: 450px;">
+<body class="p-6">
+    <div class="glass-card p-10 rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.2)] w-full relative z-10" style="max-width: 450px;">
         <div class="text-center mb-10">
             <div class="w-48 h-48 mx-auto transform hover:scale-105 transition-all duration-500">
                 <img src="{{ url_for('static', filename='img/shk_logo.png') }}" alt="SHK Industries" class="w-full h-full object-contain filter drop-shadow-lg" onerror="this.style.display='none'">

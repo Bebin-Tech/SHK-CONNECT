@@ -5,7 +5,13 @@
   <!-- Channel Sidebar -->
   <aside class="w-64 border-r bg-gray-50 flex flex-col flex-shrink-0">
     <div class="p-4 border-b bg-white">
-      <h3 class="text-base font-bold text-[#1A237E] mb-3">Channels</h3>
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-base font-bold text-[#1A237E]">Channels</h3>
+        <button onclick="document.getElementById('createChannelModal').classList.remove('hidden')"
+                class="p-1.5 bg-blue-50 text-[#1A237E] rounded-lg hover:bg-blue-100 transition shadow-sm" title="Create Channel">
+          <i data-lucide="plus" class="w-4 h-4"></i>
+        </button>
+      </div>
       <div class="relative">
         <i data-lucide="search" class="w-3.5 h-3.5 absolute left-3 top-2.5 text-gray-400"></i>
         <input type="text" placeholder="Search..." class="w-full pl-8 pr-3 py-2 bg-gray-100 rounded-xl text-xs outline-none">
@@ -55,9 +61,26 @@
           <p class="text-[10px] text-gray-400">{{ group.description or 'Team Channel' }}</p>
         </div>
       </div>
-      <span id="online-count" class="text-xs text-gray-400 font-semibold flex items-center gap-1">
-        <i data-lucide="users" class="w-3.5 h-3.5"></i> {{ group.members.count() }} members
-      </span>
+      <div class="flex items-center gap-3">
+        <span id="online-count" class="text-xs text-gray-400 font-semibold flex items-center gap-1">
+          <i data-lucide="users" class="w-3.5 h-3.5"></i> {{ group.members.count() }} members
+        </span>
+        
+        {% if current_user.role and (current_user.role.name in ['Admin', 'Owner'] or group.created_by == current_user.id) %}
+        <button onclick="document.getElementById('connectRolesModal').classList.remove('hidden')"
+                class="p-2 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition shadow-sm border border-indigo-100 flex items-center gap-2" title="Connect Roles">
+          <i data-lucide="link" class="w-4 h-4"></i>
+          <span class="text-xs font-bold">CONNECT</span>
+        </button>
+        {% endif %}
+
+        {% if current_user.role and current_user.role.name in ['Admin', 'Owner'] %}
+        <button onclick="archiveChannel({{ group.id }})"
+                class="p-2 bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-100 transition shadow-sm border border-rose-100" title="Archive & Save to History">
+          <i data-lucide="archive" class="w-4 h-4"></i>
+        </button>
+        {% endif %}
+      </div>
     </header>
 
     <!-- Reply banner -->
@@ -82,21 +105,30 @@
 
     <!-- Messages -->
     <div id="message-container" class="flex-1 overflow-y-auto p-5 space-y-4 bg-gray-50/30">
-      {% for msg in group.messages %}
+      {% if messages|length >= 50 %}
+      <div id="load-more-wrapper" class="flex justify-center pb-4">
+        <button onclick="loadMoreHistory()" id="load-more-btn"
+                class="text-[10px] font-bold text-gray-400 hover:text-[#1A237E] uppercase tracking-widest bg-white px-4 py-2 rounded-full border shadow-sm transition">
+          Load Earlier Messages
+        </button>
+      </div>
+      {% endif %}
+
+      {% for msg in messages %}
       {% if not msg.parent_id %}
       {% set is_me = msg.user_id == current_user.id %}
       {% set r = msg.author.role.name if msg.author and msg.author.role else 'Member' %}
       <div class="msg-block" id="msg-{{ msg.id }}">
         <div class="flex items-start gap-3 {% if is_me %}flex-row-reverse{% endif %}">
           <div class="w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center font-bold text-xs
-                      {% if r=='Admin' %}bg-blue-100 text-blue-700{% elif r=='Owner' %}bg-purple-100 text-purple-700{% else %}bg-orange-100 text-orange-600{% endif %}">
+                      {% if r=='Admin' %}bg-blue-100 text-blue-700{% elif r=='Owner' %}bg-purple-100 text-purple-700{% elif r=='ED' %}bg-rose-100 text-rose-700{% elif r=='Manager' %}bg-amber-100 text-amber-700{% elif r=='Accounts' %}bg-indigo-100 text-indigo-700{% elif r=='Staff' %}bg-emerald-100 text-emerald-700{% else %}bg-orange-100 text-orange-600{% endif %}">
             {{ msg.author.username[0].upper() if msg.author else '?' }}
           </div>
           <div class="max-w-[65%]">
             <div class="flex items-center gap-1.5 mb-1 {% if is_me %}justify-end{% endif %}">
               <span class="text-xs font-bold text-gray-800">{{ msg.author.username if msg.author else 'Unknown' }}</span>
               <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full
-                          {% if r=='Admin' %}bg-blue-100 text-blue-600{% elif r=='Owner' %}bg-purple-100 text-purple-600{% else %}bg-gray-100 text-gray-500{% endif %}">{{ r }}</span>
+                          {% if r=='Admin' %}bg-blue-100 text-blue-600{% elif r=='Owner' %}bg-purple-100 text-purple-600{% elif r=='ED' %}bg-rose-100 text-rose-600{% elif r=='Manager' %}bg-amber-100 text-amber-600{% elif r=='Accounts' %}bg-indigo-100 text-indigo-600{% elif r=='Staff' %}bg-emerald-100 text-emerald-600{% else %}bg-gray-100 text-gray-500{% endif %}">{{ r }}</span>
               <span class="text-[10px] text-gray-400">{{ msg.timestamp.strftime('%I:%M %p') }}</span>
             </div>
             {% if msg.message_type == 'file' and msg.file_url %}
@@ -137,14 +169,14 @@
               {% set im = rep.user_id == current_user.id %}
               <div class="flex items-start gap-2">
                 <div class="w-6 h-6 rounded-md flex-shrink-0 flex items-center justify-center font-bold text-[10px]
-                            {% if rr=='Admin' %}bg-blue-100 text-blue-700{% elif rr=='Owner' %}bg-purple-100 text-purple-700{% else %}bg-orange-100 text-orange-600{% endif %}">
+                            {% if rr=='Admin' %}bg-blue-100 text-blue-700{% elif rr=='Owner' %}bg-purple-100 text-purple-700{% elif rr=='ED' %}bg-rose-100 text-rose-700{% elif rr=='Manager' %}bg-amber-100 text-amber-700{% elif rr=='Accounts' %}bg-indigo-100 text-indigo-700{% elif rr=='Staff' %}bg-emerald-100 text-emerald-700{% else %}bg-orange-100 text-orange-600{% endif %}">
                   {{ rep.author.username[0].upper() if rep.author else '?' }}
                 </div>
                 <div>
                   <div class="flex items-center gap-1 mb-0.5">
                     <span class="text-[11px] font-bold text-gray-700">{{ rep.author.username if rep.author else '' }}</span>
                     <span class="text-[9px] px-1 py-0.5 rounded-full font-bold
-                                {% if rr=='Admin' %}bg-blue-100 text-blue-600{% elif rr=='Owner' %}bg-purple-100 text-purple-600{% else %}bg-gray-100 text-gray-500{% endif %}">{{ rr }}</span>
+                                {% if rr=='Admin' %}bg-blue-100 text-blue-600{% elif rr=='Owner' %}bg-purple-100 text-purple-600{% elif rr=='ED' %}bg-rose-100 text-rose-600{% elif rr=='Manager' %}bg-amber-100 text-amber-600{% elif rr=='Accounts' %}bg-indigo-100 text-indigo-600{% elif rr=='Staff' %}bg-emerald-100 text-emerald-600{% else %}bg-gray-100 text-gray-500{% endif %}">{{ rr }}</span>
                     <span class="text-[10px] text-gray-400">{{ rep.timestamp.strftime('%I:%M %p') }}</span>
                   </div>
                   <div class="p-2 rounded-xl text-xs {% if im %}bg-[#1A237E] text-white{% else %}bg-gray-100 text-gray-800{% endif %}">{{ rep.content }}</div>
@@ -195,12 +227,150 @@
   </main>
 </div>
 
+<!-- Create Channel Modal -->
+<div id="createChannelModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+  <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8">
+    <div class="flex items-center justify-between mb-6">
+      <h3 class="text-xl font-bold text-[#1A237E]">Create New Channel</h3>
+      <button onclick="document.getElementById('createChannelModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+    <form id="createChannelForm" class="space-y-4">
+      <div>
+        <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Channel Name</label>
+        <input type="text" name="name" placeholder="e.g. Sales Team"
+          class="w-full p-3 border border-gray-200 rounded-xl outline-none focus:border-[#1A237E] text-sm font-semibold" required>
+      </div>
+      <div>
+        <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Description</label>
+        <textarea name="description" placeholder="What's this channel for?"
+          class="w-full p-3 border border-gray-200 rounded-xl outline-none focus:border-[#1A237E] text-sm h-24 resize-none"></textarea>
+      </div>
+      <button type="submit"
+        class="w-full py-3 bg-[#1A237E] text-white rounded-xl font-bold hover:bg-[#3949AB] transition shadow-lg mt-2">
+        CREATE CHANNEL
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- Connect Roles Modal -->
+<div id="connectRolesModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+  <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8">
+    <div class="flex items-center justify-between mb-6">
+      <h3 class="text-xl font-bold text-[#1A237E]">Connect Roles</h3>
+      <button onclick="document.getElementById('connectRolesModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+    <p class="text-xs text-gray-400 mb-4 font-semibold uppercase tracking-wider">Select roles that can access this channel</p>
+    <form id="connectRolesForm" class="space-y-3">
+      <input type="hidden" name="group_id" value="{{ group.id if group else '' }}">
+      <div class="grid grid-cols-2 gap-3 max-h-60 overflow-y-auto pr-2">
+        {% for r in all_roles %}
+        <label class="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:bg-gray-50 transition cursor-pointer">
+          <input type="checkbox" name="role_ids" value="{{ r.id }}" 
+                 {% if group and r in group.roles %}checked{% endif %}
+                 class="w-4 h-4 rounded text-[#1A237E] focus:ring-[#1A237E]">
+          <span class="text-sm font-bold text-gray-700">{{ r.name }}</span>
+        </label>
+        {% endfor %}
+      </div>
+      <button type="submit"
+        class="w-full py-3 bg-[#1A237E] text-white rounded-xl font-bold hover:bg-[#3949AB] transition shadow-lg mt-4 flex items-center justify-center gap-2">
+        <i data-lucide="check" class="w-4 h-4"></i> DONE
+      </button>
+    </form>
+  </div>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
 <script>
 const GROUP_ID = "{{ group.id if group else '' }}";
 const MY_NAME  = "{{ current_user.username }}";
 let replyToId  = null;
-let pendingFile = null;  // { url, type, name, size }
+let pendingFile = null;
+
+// ── Channel Management ───────────────────────────────
+document.getElementById('createChannelForm').onsubmit = async function(e) {
+  e.preventDefault();
+  const fd = new FormData(this);
+  const resp = await fetch('/chat/create_group', { method: 'POST', body: fd });
+  const data = await resp.json();
+  if (data.success) {
+    location.href = `/chat/${data.id}`;
+  } else {
+    alert(data.error || 'Failed to create channel');
+  }
+};
+
+document.getElementById('connectRolesForm')?.addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const fd = new FormData(this);
+  const resp = await fetch(`/chat/connect_roles/${GROUP_ID}`, { method: 'POST', body: fd });
+  const data = await resp.json();
+  if (data.success) {
+    location.reload();
+  } else {
+    alert(data.error || 'Failed to connect roles');
+  }
+});
+
+// ── Pagination & Load More ──────────────────────────
+let messageOffset = 50;
+async function loadMoreHistory() {
+  const btn = document.getElementById('load-more-btn');
+  const wrapper = document.getElementById('load-more-wrapper');
+  btn.disabled = true;
+  btn.textContent = 'Loading...';
+  
+  try {
+    const resp = await fetch(`/chat/load_history/${GROUP_ID}?offset=${messageOffset}`);
+    const messages = await resp.json();
+    
+    if (messages.length === 0) {
+      wrapper.innerHTML = '<p class="text-[10px] text-gray-300 font-bold uppercase tracking-widest">No more earlier messages</p>';
+      return;
+    }
+    
+    const container = document.getElementById('message-container');
+    const oldScrollHeight = container.scrollHeight;
+    
+    // Prepend messages (they come in descending order)
+    messages.forEach(msg => {
+      const wrap = document.createElement('div');
+      wrap.className = 'msg-block';
+      wrap.id = `msg-${msg.id}`;
+      wrap.innerHTML = buildMsgHTML(msg, false);
+      wrapper.after(wrap);
+    });
+    
+    messageOffset += messages.length;
+    btn.disabled = false;
+    btn.textContent = 'Load Earlier Messages';
+    
+    // Maintain scroll position
+    container.scrollTop = container.scrollHeight - oldScrollHeight;
+    lucide.createIcons();
+    
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = 'Load Earlier Messages';
+    alert('Failed to load history');
+  }
+}
+
+async function archiveChannel(groupId) {
+  if (!confirm('Are you sure you want to archive this channel? it will be moved to History.')) return;
+  const resp = await fetch(`/chat/archive_group/${groupId}`, { method: 'POST' });
+  const data = await resp.json();
+  if (data.success) {
+    location.href = '/chat';
+  } else {
+    alert(data.error || 'Failed to archive channel');
+  }
+}
 
 // ── Reply ────────────────────────────────────────────
 function setReply(id, user, preview) {

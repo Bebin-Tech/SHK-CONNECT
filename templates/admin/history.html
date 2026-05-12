@@ -24,7 +24,7 @@
             
             <div class="flex items-center justify-between pt-4 border-t border-gray-50">
                 <span class="text-xs font-bold text-gray-400">{{ group.messages|length if group.messages else 0 }} Messages</span>
-                <a href="/?channel={{ group.id }}" class="flex items-center gap-2 text-[#1A237E] font-bold text-sm hover:underline">
+                <a href="{{ url_for('admin.history_detail', group_id=group.id) }}" class="flex items-center gap-2 text-[#1A237E] font-bold text-sm hover:underline">
                     VIEW LOGS <i data-lucide="arrow-right" class="w-4 h-4"></i>
                 </a>
             </div>

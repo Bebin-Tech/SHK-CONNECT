@@ -139,77 +139,129 @@
             </div>
         </div>
 
-        <!-- ── RIGHT: Transaction Log Table ── -->
+        <!-- ── RIGHT: Daily Transaction Log ── -->
         <div class="md:col-span-2">
             <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-                <div class="p-6 border-b flex justify-between items-center flex-wrap gap-2">
-                    <h3 class="font-bold text-[#1A237E]">Daily Transaction Log</h3>
+
+                <!-- Table Header -->
+                <div class="p-5 border-b flex justify-between items-center flex-wrap gap-2">
+                    <div>
+                        <h3 class="font-bold text-[#1A237E]">Daily Transaction Log</h3>
+                        <p class="text-[10px] text-gray-400 font-semibold uppercase tracking-widest">SHK Industries · Workflow</p>
+                    </div>
                     <div class="flex gap-2 flex-wrap">
+                        {% if current_user.role and current_user.role.name == 'Admin' %}
                         <button onclick="clearRecentActivity()" class="px-3 py-2 bg-red-50 text-red-600 rounded-xl text-xs font-bold hover:bg-red-100 transition flex items-center gap-1.5">
                             <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> CLEAR
                         </button>
+                        {% endif %}
+                        {% if current_user.role and current_user.role.name in ['Admin','Owner'] %}
                         <a href="{{ url_for('admin.export_expenses_csv') }}" class="px-3 py-2 bg-green-50 text-green-700 rounded-xl text-xs font-bold hover:bg-green-100 transition flex items-center gap-1.5">
-                            <i data-lucide="download" class="w-3.5 h-3.5"></i> CSV
+                            <i data-lucide="download" class="w-3.5 h-3.5"></i> EXPORT CSV
                         </a>
+                        {% endif %}
                         <button onclick="location.reload()" class="p-2 hover:bg-gray-50 rounded-lg text-gray-400">
                             <i data-lucide="refresh-cw" class="w-4 h-4"></i>
                         </button>
                     </div>
                 </div>
+
+                <!-- Invoice-style summary bar -->
+                <div class="px-5 py-3 bg-[#1A237E]/5 border-b flex gap-6 flex-wrap text-xs font-bold">
+                    <span class="text-gray-500">Total Transactions: <span class="text-[#1A237E]">{{ expenses|length }}</span></span>
+                    <span class="text-gray-500">Monthly Payable: <span class="text-[#1A237E]">₹{{ "%.2f"|format(stats.monthly_debit) }}</span></span>
+                    <span class="text-gray-500">Monthly Credit: <span class="text-green-600">₹{{ "%.2f"|format(stats.monthly_credit) }}</span></span>
+                </div>
+
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse">
                         <thead>
-                            <tr class="bg-gray-50 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                                <th class="px-4 py-4">Date</th>
-                                <th class="px-4 py-4">Bill Name</th>
-                                <th class="px-4 py-4">Category</th>
-                                <th class="px-4 py-4 text-right">Amount</th>
-                                <th class="px-4 py-4 text-center">Status</th>
-                                <th class="px-4 py-4 text-center">Actions</th>
+                            <tr class="bg-gray-50 text-[10px] font-bold text-gray-500 uppercase tracking-widest border-b">
+                                <th class="px-3 py-3 text-center">S.No</th>
+                                <th class="px-3 py-3">Date</th>
+                                <th class="px-3 py-3">Description of Transaction</th>
+                                <th class="px-3 py-3">Category</th>
+                                <th class="px-3 py-3 text-center">Type</th>
+                                <th class="px-3 py-3 text-right">Amount (₹)</th>
+                                <th class="px-3 py-3 text-center">Status</th>
+                                <th class="px-3 py-3 text-center">Actions</th>
                             </tr>
                         </thead>
-                        <tbody class="text-sm">
+                        <tbody class="text-sm divide-y">
                             {% for expense in expenses %}
-                            <tr id="row-{{ expense.id }}" class="border-b hover:bg-gray-50/50 transition {{ 'bg-green-50/40' if expense.is_paid else '' }}">
-                                <td class="px-4 py-4 font-medium text-gray-500 whitespace-nowrap">{{ expense.created_at.strftime('%d %b %Y') }}</td>
-                                <td class="px-4 py-4 font-bold text-gray-800">{{ expense.description or '—' }}</td>
-                                <td class="px-4 py-4">
-                                    <span class="px-2 py-1 bg-gray-100 rounded-full text-[10px] font-bold text-gray-600">{{ expense.category or 'Misc' }}</span>
+                            <tr id="row-{{ expense.id }}" class="hover:bg-gray-50/60 transition {{ 'bg-green-50/30' if expense.is_paid else '' }}">
+                                <td class="px-3 py-3 text-center text-gray-400 font-mono text-xs">{{ loop.index }}</td>
+                                <td class="px-3 py-3 text-gray-500 whitespace-nowrap text-xs font-semibold">
+                                    {{ expense.bill_date.strftime('%d-%b-%Y') if expense.bill_date else expense.created_at.strftime('%d-%b-%Y') }}
                                 </td>
-                                <td class="px-4 py-4 text-right font-bold text-[#1A237E]">₹{{ expense.amount }}</td>
-                                <td class="px-4 py-4 text-center">
-                                    {% if expense.is_paid %}
-                                    <span class="px-2 py-1 bg-green-100 text-green-700 rounded-lg text-[10px] font-bold">PAID</span>
-                                    {% elif expense.status == 'approved' %}
-                                    <span class="px-2 py-1 bg-blue-100 text-blue-700 rounded-lg text-[10px] font-bold">APPROVED</span>
-                                    {% else %}
-                                    <span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded-lg text-[10px] font-bold">PENDING</span>
+                                <td class="px-3 py-3 font-bold text-gray-800 max-w-[180px]">
+                                    <p class="truncate">{{ expense.description or '—' }}</p>
+                                    {% if expense.bill_url %}
+                                    <a href="{{ expense.bill_url }}" target="_blank" class="text-[10px] text-blue-500 flex items-center gap-0.5 mt-0.5 hover:underline">
+                                        <i data-lucide="paperclip" class="w-3 h-3"></i> Bill attached
+                                    </a>
                                     {% endif %}
                                 </td>
-                                <td class="px-4 py-4">
+                                <td class="px-3 py-3">
+                                    <span class="px-2 py-0.5 bg-gray-100 rounded-full text-[10px] font-bold text-gray-600 whitespace-nowrap">{{ expense.category or 'Misc' }}</span>
+                                </td>
+                                <td class="px-3 py-3 text-center">
+                                    {% if expense.type == 'credit' %}
+                                    <span class="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-[10px] font-bold">CREDIT</span>
+                                    {% else %}
+                                    <span class="px-2 py-0.5 bg-red-50 text-red-600 rounded-full text-[10px] font-bold">DEBIT</span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-3 py-3 text-right font-bold text-[#1A237E] whitespace-nowrap">
+                                    ₹{{ "%.2f"|format(expense.amount) }}
+                                </td>
+                                <td class="px-3 py-3 text-center whitespace-nowrap">
+                                    {% if expense.is_paid %}
+                                    <span class="px-2 py-0.5 bg-green-100 text-green-700 rounded-lg text-[10px] font-bold">PAID</span>
+                                    {% elif expense.status == 'approved' %}
+                                    <span class="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-lg text-[10px] font-bold">APPROVED</span>
+                                    {% elif expense.status == 'rejected' %}
+                                    <span class="px-2 py-0.5 bg-red-100 text-red-600 rounded-lg text-[10px] font-bold">REJECTED</span>
+                                    {% else %}
+                                    <span class="px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded-lg text-[10px] font-bold">PENDING</span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-3 py-3">
                                     <div class="flex items-center justify-center gap-1">
-                                        <button onclick="markPaid({{ expense.id }})" title="{{ 'Unmark Paid' if expense.is_paid else 'Mark as Paid' }}"
+                                        {% if current_user.role and current_user.role.name in ['Admin','Owner'] %}
+                                        <button onclick="markPaid({{ expense.id }})" title="{{ 'Unmark' if expense.is_paid else 'Mark Paid' }}"
                                             class="p-1.5 rounded-lg transition {{ 'bg-green-100 text-green-700' if expense.is_paid else 'text-gray-400 hover:bg-green-50 hover:text-green-600' }}">
-                                            <i data-lucide="check-circle" class="w-4 h-4"></i>
+                                            <i data-lucide="check-circle" class="w-3.5 h-3.5"></i>
                                         </button>
-                                        {% if current_user.role and current_user.role.name in ['Admin', 'Owner'] and expense.status == 'pending' %}
+                                        {% if expense.status == 'pending' %}
                                         <button onclick="approveExpense({{ expense.id }})" title="Approve" class="p-1.5 text-blue-400 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition">
-                                            <i data-lucide="thumbs-up" class="w-4 h-4"></i>
+                                            <i data-lucide="thumbs-up" class="w-3.5 h-3.5"></i>
                                         </button>
                                         {% endif %}
+                                        {% endif %}
                                         <button onclick="deleteExpense({{ expense.id }})" title="Delete" class="p-1.5 text-red-400 hover:bg-red-50 hover:text-red-600 rounded-lg transition">
-                                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
                                         </button>
                                     </div>
                                 </td>
                             </tr>
                             {% else %}
-                            <tr><td colspan="6" class="text-center py-16 text-gray-400 font-bold">
+                            <tr><td colspan="8" class="text-center py-16 text-gray-400 font-bold">
                                 <i data-lucide="inbox" class="w-10 h-10 mx-auto mb-2 opacity-30"></i>
-                                <p>No expenses recorded yet.</p>
+                                <p>No transactions recorded yet.</p>
                             </td></tr>
                             {% endfor %}
                         </tbody>
+                        <!-- Invoice-style Grand Total footer -->
+                        {% if expenses %}
+                        <tfoot class="bg-[#1A237E] text-white">
+                            <tr>
+                                <td colspan="5" class="px-4 py-3 text-right text-xs font-bold uppercase tracking-widest">Grand Total Payable</td>
+                                <td class="px-3 py-3 text-right font-bold text-lg">₹{{ "%.2f"|format(stats.monthly_debit) }}</td>
+                                <td colspan="2"></td>
+                            </tr>
+                        </tfoot>
+                        {% endif %}
                     </table>
                 </div>
             </div>

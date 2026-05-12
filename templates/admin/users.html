@@ -6,7 +6,7 @@
   <header class="flex justify-between items-center flex-wrap gap-4">
     <div>
       <h2 class="text-2xl font-bold text-[#1A237E]">User Directory</h2>
-      <p class="text-gray-400 text-sm">Manage employee accounts, roles and passwords</p>
+      <p class="text-gray-400 text-sm">Manage user accounts, roles and passwords</p>
     </div>
     <button onclick="openModal('createModal')"
       class="bg-[#F57C00] text-white px-5 py-2.5 rounded-2xl font-bold hover:bg-[#E65100] transition shadow-lg flex items-center gap-2 text-sm">
@@ -33,7 +33,7 @@
   <!-- User Table -->
   <div class="bg-white rounded-3xl shadow-sm overflow-hidden border">
     <div class="p-5 border-b flex items-center justify-between">
-      <h3 class="font-bold text-[#1A237E]">All Employees</h3>
+      <h3 class="font-bold text-[#1A237E]">All Users</h3>
       <div class="relative">
         <i data-lucide="search" class="w-3.5 h-3.5 absolute left-3 top-2.5 text-gray-400"></i>
         <input id="userSearch" type="text" placeholder="Search user..."
@@ -61,6 +61,10 @@
               <div class="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm
                           {% if user.role and user.role.name == 'Admin' %}bg-blue-100 text-blue-700
                           {% elif user.role and user.role.name == 'Owner' %}bg-purple-100 text-purple-700
+                          {% elif user.role and user.role.name == 'ED' %}bg-rose-100 text-rose-700
+                          {% elif user.role and user.role.name == 'Manager' %}bg-amber-100 text-amber-700
+                          {% elif user.role and user.role.name == 'Accounts' %}bg-indigo-100 text-indigo-700
+                          {% elif user.role and user.role.name == 'Staff' %}bg-emerald-100 text-emerald-700
                           {% else %}bg-orange-100 text-orange-600{% endif %}">
                 {{ user.username[0].upper() }}
               </div>
@@ -73,6 +77,10 @@
             <span class="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider
                         {% if r == 'Admin' %}bg-blue-100 text-blue-700
                         {% elif r == 'Owner' %}bg-purple-100 text-purple-700
+                        {% elif r == 'ED' %}bg-rose-100 text-rose-700
+                        {% elif r == 'Manager' %}bg-amber-100 text-amber-700
+                        {% elif r == 'Accounts' %}bg-indigo-100 text-indigo-700
+                        {% elif r == 'Staff' %}bg-emerald-100 text-emerald-700
                         {% else %}bg-gray-100 text-gray-600{% endif %}">{{ r }}</span>
           </td>
           <td class="px-6 py-4">
@@ -117,7 +125,7 @@
 <div id="createModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
   <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8">
     <div class="flex items-center justify-between mb-6">
-      <h3 class="text-xl font-bold text-[#1A237E]">Create Employee Account</h3>
+      <h3 class="text-xl font-bold text-[#1A237E]">Create User Account</h3>
       <button onclick="closeModal('createModal')" class="text-gray-400 hover:text-gray-600">
         <i data-lucide="x" class="w-5 h-5"></i>
       </button>
