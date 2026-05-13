@@ -3,13 +3,13 @@
 <div class="space-y-6">
 
   <!-- Header -->
-  <header class="flex justify-between items-center flex-wrap gap-4">
+  <header class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
     <div>
       <h2 class="text-2xl font-bold text-[#1A237E]">User Directory</h2>
       <p class="text-gray-400 text-sm">Manage user accounts, roles and passwords</p>
     </div>
     <button onclick="openModal('createModal')"
-      class="bg-[#F57C00] text-white px-5 py-2.5 rounded-2xl font-bold hover:bg-[#E65100] transition shadow-lg flex items-center gap-2 text-sm">
+      class="w-full sm:w-auto justify-center bg-[#F57C00] text-white px-5 py-2.5 rounded-2xl font-bold hover:bg-[#E65100] transition shadow-lg flex items-center gap-2 text-sm">
       <i data-lucide="user-plus" class="w-4 h-4"></i> Create User
     </button>
   </header>
@@ -30,7 +30,7 @@
     </div>
   </div>
 
-  <!-- User Table -->
+  <!-- User Table / Mobile Cards -->
   <div class="bg-white rounded-3xl shadow-sm overflow-hidden border">
     <div class="p-5 border-b flex items-center justify-between flex-wrap gap-2">
       <h3 class="font-bold text-[#1A237E]">All Users</h3>
@@ -41,7 +41,64 @@
           class="pl-9 pr-4 py-2 bg-gray-50 border rounded-xl text-sm outline-none w-full sm:w-52">
       </div>
     </div>
-    <div class="overflow-x-auto">
+    <div class="md:hidden divide-y" id="userCards">
+      {% for user in users %}
+      {% set r = user.role.name if user.role else 'No Role' %}
+      <div class="user-card p-4 space-y-4" data-name="{{ user.username|lower }}" data-email="{{ user.email|lower }}">
+        <div class="flex items-start gap-3">
+          <div class="w-11 h-11 rounded-xl flex-shrink-0 flex items-center justify-center font-bold text-sm
+                      {% if r == 'Admin' %}bg-blue-100 text-blue-700
+                      {% elif r == 'Owner' %}bg-purple-100 text-purple-700
+                      {% elif r == 'ED' %}bg-rose-100 text-rose-700
+                      {% elif r == 'Manager' %}bg-amber-100 text-amber-700
+                      {% elif r == 'Accounts' %}bg-indigo-100 text-indigo-700
+                      {% elif r == 'Staff' %}bg-emerald-100 text-emerald-700
+                      {% else %}bg-orange-100 text-orange-600{% endif %}">
+            {{ user.username[0].upper() }}
+          </div>
+          <div class="min-w-0 flex-1">
+            <p class="font-bold text-gray-800 user-name truncate">{{ user.username }}</p>
+            <p class="text-xs text-gray-500 truncate">{{ user.email }}</p>
+            <div class="mt-2 flex items-center gap-2 flex-wrap">
+              <span class="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider
+                          {% if r == 'Admin' %}bg-blue-100 text-blue-700
+                          {% elif r == 'Owner' %}bg-purple-100 text-purple-700
+                          {% elif r == 'ED' %}bg-rose-100 text-rose-700
+                          {% elif r == 'Manager' %}bg-amber-100 text-amber-700
+                          {% elif r == 'Accounts' %}bg-indigo-100 text-indigo-700
+                          {% elif r == 'Staff' %}bg-emerald-100 text-emerald-700
+                          {% else %}bg-gray-100 text-gray-600{% endif %}">{{ r }}</span>
+              {% if user.is_active %}
+              <span class="text-green-600 text-xs font-semibold">Active</span>
+              {% else %}
+              <span class="text-gray-400 text-xs font-semibold">Inactive</span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <button onclick="openEdit({{ user.id }}, '{{ user.username }}', '{{ user.email }}', '{{ user.role_id or '' }}')"
+            class="py-2.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-xl transition font-bold text-xs flex items-center justify-center gap-2" title="Edit">
+            <i data-lucide="edit-3" class="w-4 h-4"></i> Edit
+          </button>
+          {% if user.id != current_user.id %}
+          <form action="{{ url_for('admin.delete_user', user_id=user.id) }}" method="POST"
+                onsubmit="return confirm('Delete {{ user.username }}? This cannot be undone.')">
+            <button type="submit" class="w-full py-2.5 bg-red-50 text-red-500 hover:bg-red-100 rounded-xl transition font-bold text-xs flex items-center justify-center gap-2" title="Delete">
+              <i data-lucide="trash-2" class="w-4 h-4"></i> Delete
+            </button>
+          </form>
+          {% else %}
+          <span class="py-2.5 bg-gray-50 text-gray-300 rounded-xl font-bold text-xs flex items-center justify-center">Current User</span>
+          {% endif %}
+        </div>
+      </div>
+      {% else %}
+      <div class="text-center py-16 text-gray-400">No users found.</div>
+      {% endfor %}
+    </div>
+
+    <div class="hidden md:block overflow-x-auto">
     <table class="w-full text-left" id="userTable">
       <thead class="bg-gray-50 border-b text-[10px] font-bold text-gray-400 uppercase tracking-widest">
         <tr>
@@ -124,7 +181,7 @@
 
 <!-- ── Create User Modal ──────────────────────────────── -->
 <div id="createModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-  <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8">
+  <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md max-h-[88dvh] overflow-y-auto p-5 sm:p-8">
     <div class="flex items-center justify-between mb-6">
       <h3 class="text-xl font-bold text-[#1A237E]">Create User Account</h3>
       <button onclick="closeModal('createModal')" class="text-gray-400 hover:text-gray-600">
@@ -165,7 +222,7 @@
 
 <!-- ── Edit User Modal ─────────────────────────────────── -->
 <div id="editModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-  <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8">
+  <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md max-h-[88dvh] overflow-y-auto p-5 sm:p-8">
     <div class="flex items-center justify-between mb-6">
       <h3 class="text-xl font-bold text-[#1A237E]">Edit User</h3>
       <button onclick="closeModal('editModal')" class="text-gray-400 hover:text-gray-600">
@@ -185,7 +242,7 @@
       </div>
       <div>
         <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">New Password <span class="text-gray-300 font-normal normal-case">(leave blank to keep)</span></label>
-        <input type="password" name="password" placeholder="••••••••"
+        <input type="password" name="password" placeholder="********"
           class="w-full p-3 border border-gray-200 rounded-xl outline-none focus:border-[#1A237E] text-sm">
       </div>
       <div>
@@ -220,10 +277,17 @@ function openEdit(userId, username, email, roleId) {
 }
 function filterUsers(q) {
   const rows = document.querySelectorAll('.user-row');
+  const cards = document.querySelectorAll('.user-card');
   q = q.toLowerCase();
   rows.forEach(row => {
     const name = row.querySelector('.user-name').textContent.toLowerCase();
-    row.style.display = name.includes(q) ? '' : 'none';
+    const email = row.children[2]?.textContent.toLowerCase() || '';
+    row.style.display = (name.includes(q) || email.includes(q)) ? '' : 'none';
+  });
+  cards.forEach(card => {
+    const name = card.dataset.name || '';
+    const email = card.dataset.email || '';
+    card.style.display = (name.includes(q) || email.includes(q)) ? '' : 'none';
   });
 }
 // Close modal on backdrop click

@@ -168,7 +168,7 @@ def delete_user(user_id):
 
 @admin_bp.route('/groups/create', methods=['POST'])
 @login_required
-@admin_required
+@admin_or_owner_required
 def create_group():
     import string, random
     name = request.form.get('name')
@@ -185,7 +185,7 @@ def create_group():
 
 @admin_bp.route('/groups/<int:group_id>/archive')
 @login_required
-@admin_required
+@admin_or_owner_required
 def archive_group(group_id):
     group = Group.query.get_or_404(group_id)
     group.is_archived = True
@@ -234,4 +234,3 @@ def history_detail(group_id):
         return redirect(url_for('admin.history'))
         
     return render_template('admin/history_detail.html', title=f'History: {group.name}', group=group)
-

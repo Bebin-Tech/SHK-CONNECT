@@ -56,6 +56,11 @@
                     <a href="/chat" class="flex items-center gap-3 p-4 rounded-2xl {% if '/chat' in request.path %}bg-blue-50 text-[#1A237E]{% endif %} font-bold">
                         <i data-lucide="message-circle"></i> Team Chat
                     </a>
+                    {% if role in ['Admin', 'Owner'] %}
+                    <a href="/admin/" class="flex items-center gap-3 p-4 rounded-2xl {% if request.path == '/admin/' %}bg-blue-50 text-[#1A237E]{% endif %} font-bold">
+                        <i data-lucide="layout-dashboard"></i> Admin Center
+                    </a>
+                    {% endif %}
                     <a href="/admin/history" class="flex items-center gap-3 p-4 rounded-2xl {% if '/admin/history' in request.path %}bg-blue-50 text-[#1A237E]{% endif %} font-bold">
                         <i data-lucide="archive"></i> History
                     </a>
@@ -230,13 +235,22 @@
                     <i data-lucide="message-circle" class="w-6 h-6"></i>
                     <span class="text-[10px] font-bold uppercase tracking-widest">Chat</span>
                 </a>
+                {% set role = current_user.role.name if current_user.role else 'Member' %}
+                {% if role in ['Admin', 'Owner'] %}
+                <a href="/admin/" class="flex flex-col items-center gap-1 {% if request.path == '/admin/' %}text-[#1A237E]{% else %}text-gray-400{% endif %}">
+                    <i data-lucide="layout-dashboard" class="w-6 h-6"></i>
+                    <span class="text-[10px] font-bold uppercase tracking-widest">Admin</span>
+                </a>
+                {% endif %}
+                {% if role == 'Admin' %}
+                <a href="/admin/users" class="flex flex-col items-center gap-1 {% if '/admin/users' in request.path %}text-[#1A237E]{% else %}text-gray-400{% endif %}">
+                    <i data-lucide="users" class="w-6 h-6"></i>
+                    <span class="text-[10px] font-bold uppercase tracking-widest">Users</span>
+                </a>
+                {% endif %}
                 <a href="/admin/history" class="flex flex-col items-center gap-1 {% if '/admin/history' in request.path %}text-[#1A237E]{% else %}text-gray-400{% endif %}">
                     <i data-lucide="archive" class="w-6 h-6"></i>
                     <span class="text-[10px] font-bold uppercase tracking-widest">History</span>
-                </a>
-                <a href="/" class="flex flex-col items-center gap-1 text-gray-400">
-                    <i data-lucide="layout-grid" class="w-6 h-6"></i>
-                    <span class="text-[10px] font-bold uppercase tracking-widest">Home</span>
                 </a>
                 <a href="/logout" class="flex flex-col items-center gap-1 text-rose-400">
                     <i data-lucide="log-out" class="w-6 h-6"></i>
