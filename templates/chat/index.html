@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
+{% set can_manage_channel = group and current_user.role and (current_user.role.name in ['Admin', 'Owner'] or group.created_by == current_user.id) %}
 <div class="chat-layout flex h-full min-h-0 -m-4 lg:-m-10 bg-white relative overflow-hidden">
   <div id="channel-overlay" onclick="closeChannels()" class="fixed top-16 bottom-20 left-0 right-0 z-30 bg-black/40 hidden opacity-0 transition-opacity duration-300 lg:hidden"></div>
 
@@ -24,10 +25,14 @@
          data-channel-link data-channel-name="{{ g.name|lower }}"
          class="flex items-center gap-2 p-3 rounded-xl transition
                 {% if group and group.id == g.id %}bg-[#1A237E] text-white{% else %}hover:bg-white text-gray-700{% endif %}">
-        <div class="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs
+        {% if g.avatar_url %}
+        <img src="{{ g.avatar_url }}" alt="{{ g.name }}" class="w-8 h-8 rounded-lg object-cover flex-shrink-0">
+        {% else %}
+        <div class="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs flex-shrink-0
                     {% if group and group.id == g.id %}bg-white/20{% else %}bg-blue-100 text-[#1A237E]{% endif %}">
           {{ g.name[0].upper() }}
         </div>
+        {% endif %}
         <div class="flex-1 min-w-0">
           <p class="font-bold text-sm truncate">{{ g.name }}</p>
           <p class="text-[10px] {% if group and group.id == g.id %}text-blue-200{% else %}text-gray-400{% endif %}">{{ g.members.count() }} members</p>
@@ -59,7 +64,15 @@
         <button onclick="toggleChannels()" class="lg:hidden p-2 text-gray-400 hover:bg-gray-50 rounded-lg">
           <i data-lucide="hash"></i>
         </button>
-        <div class="w-8 h-8 bg-blue-100 text-[#1A237E] rounded-lg hidden sm:flex items-center justify-center font-bold text-sm">#</div>
+        <button type="button" onclick="{% if can_manage_channel %}openChannelProfileModal(){% endif %}"
+                class="w-9 h-9 rounded-xl flex-shrink-0 overflow-hidden {% if can_manage_channel %}cursor-pointer ring-2 ring-transparent hover:ring-blue-100{% else %}cursor-default{% endif %}"
+                title="{% if can_manage_channel %}Edit Channel Profile{% else %}Channel Profile{% endif %}">
+          {% if group.avatar_url %}
+          <img src="{{ group.avatar_url }}" alt="{{ group.name }}" class="w-full h-full object-cover">
+          {% else %}
+          <span class="w-full h-full bg-blue-100 text-[#1A237E] flex items-center justify-center font-bold text-sm">{{ group.name[0].upper() }}</span>
+          {% endif %}
+        </button>
         <div class="min-w-0">
           <h3 class="font-bold text-sm text-[#1A237E] truncate">{{ group.name }}</h3>
           <p class="hidden sm:block text-[10px] text-gray-400 truncate">{{ group.description or 'Team Channel' }}</p>
@@ -70,7 +83,12 @@
           <i data-lucide="users" class="w-3.5 h-3.5"></i> {{ group.members.count() }} members
         </span>
         
-        {% if current_user.role and (current_user.role.name in ['Admin', 'Owner'] or group.created_by == current_user.id) %}
+        {% if can_manage_channel %}
+        <button onclick="openChannelProfileModal()"
+                class="p-2 bg-blue-50 text-[#1A237E] rounded-xl hover:bg-blue-100 transition shadow-sm border border-blue-100 flex items-center gap-2" title="Edit Channel Profile">
+          <i data-lucide="settings-2" class="w-4 h-4"></i>
+          <span class="hidden sm:inline text-xs font-bold">EDIT</span>
+        </button>
         <button onclick="document.getElementById('connectRolesModal').classList.remove('hidden')"
                 class="p-2 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition shadow-sm border border-indigo-100 flex items-center gap-2" title="Connect Roles">
           <i data-lucide="link" class="w-4 h-4"></i>
@@ -224,9 +242,13 @@
           {% for g in groups %}
           <a href="{{ url_for('chat.index', group_id=g.id) }}"
              class="flex items-center gap-3 p-3 rounded-2xl bg-white border border-gray-100 shadow-sm active:scale-[0.99] transition">
-            <div class="w-10 h-10 rounded-xl bg-blue-100 text-[#1A237E] flex items-center justify-center font-bold text-sm">
+            {% if g.avatar_url %}
+            <img src="{{ g.avatar_url }}" alt="{{ g.name }}" class="w-10 h-10 rounded-xl object-cover flex-shrink-0">
+            {% else %}
+            <div class="w-10 h-10 rounded-xl bg-blue-100 text-[#1A237E] flex items-center justify-center font-bold text-sm flex-shrink-0">
               {{ g.name[0].upper() }}
             </div>
+            {% endif %}
             <div class="min-w-0 flex-1">
               <p class="font-bold text-sm text-[#1A237E] truncate">{{ g.name }}</p>
               <p class="text-[10px] text-gray-400">{{ g.members.count() }} members</p>
@@ -245,6 +267,47 @@
     {% endif %}
   </main>
 </div>
+
+{% if group and can_manage_channel %}
+<div id="channelProfileModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+  <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md max-h-[88dvh] overflow-y-auto p-5 sm:p-8">
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <h3 class="text-xl font-bold text-[#1A237E]">Channel Profile</h3>
+        <p class="text-xs text-gray-400 font-semibold">Edit photo and details</p>
+      </div>
+      <button onclick="closeChannelProfileModal()" class="text-gray-400 hover:text-gray-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+    </div>
+    <form id="channelProfileForm" class="space-y-4">
+      <div class="flex flex-col items-center gap-3">
+        <div class="w-24 h-24 rounded-3xl overflow-hidden bg-blue-50 text-[#1A237E] flex items-center justify-center font-bold text-3xl border border-blue-100">
+          {% if group.avatar_url %}
+          <img id="channel-profile-preview" src="{{ group.avatar_url }}" alt="{{ group.name }}" class="w-full h-full object-cover">
+          {% else %}
+          <span id="channel-profile-initial">{{ group.name[0].upper() }}</span>
+          <img id="channel-profile-preview" src="" alt="" class="hidden w-full h-full object-cover">
+          {% endif %}
+        </div>
+        <label class="px-4 py-2 bg-gray-50 text-[#1A237E] rounded-xl font-bold text-xs cursor-pointer border hover:bg-blue-50">
+          Upload Picture
+          <input id="channel-avatar-input" type="file" name="avatar" accept="image/*" class="hidden">
+        </label>
+      </div>
+      <div>
+        <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Channel Name</label>
+        <input type="text" name="name" value="{{ group.name }}" class="w-full p-3 border border-gray-200 rounded-xl outline-none focus:border-[#1A237E] text-sm font-semibold" required>
+      </div>
+      <div>
+        <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Details</label>
+        <textarea name="description" class="w-full p-3 border border-gray-200 rounded-xl outline-none focus:border-[#1A237E] text-sm h-24 resize-none">{{ group.description or '' }}</textarea>
+      </div>
+      <button type="submit" class="w-full py-3 bg-[#1A237E] text-white rounded-xl font-bold hover:bg-[#3949AB] transition shadow-lg uppercase">
+        Save Profile
+      </button>
+    </form>
+  </div>
+</div>
+{% endif %}
 
 <!-- Modals -->
 <div id="createChannelModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
@@ -323,6 +386,14 @@ function filterChannels(query) {
   });
 }
 
+function openChannelProfileModal() {
+  document.getElementById('channelProfileModal')?.classList.remove('hidden');
+}
+
+function closeChannelProfileModal() {
+  document.getElementById('channelProfileModal')?.classList.add('hidden');
+}
+
 function setSubmitState(form, isSubmitting) {
   const button = form.querySelector('button[type="submit"]');
   if (!button) return;
@@ -380,6 +451,39 @@ document.getElementById('connectRolesForm')?.addEventListener('submit', async fu
     else alert(data.error || 'Failed to connect roles');
   } catch (err) {
     alert(err.message || 'Failed to connect roles');
+    setSubmitState(this, false);
+  }
+});
+
+document.getElementById('channel-avatar-input')?.addEventListener('change', function() {
+  const file = this.files[0];
+  if (!file) return;
+  const preview = document.getElementById('channel-profile-preview');
+  const initial = document.getElementById('channel-profile-initial');
+  preview.src = URL.createObjectURL(file);
+  preview.classList.remove('hidden');
+  initial?.classList.add('hidden');
+});
+
+document.getElementById('channelProfileForm')?.addEventListener('submit', async function(e) {
+  e.preventDefault();
+  if (!GROUP_ID) return alert('Select a channel before editing its profile.');
+  setSubmitState(this, true);
+  const fd = new FormData(this);
+  const name = (fd.get('name') || '').toString().trim();
+  if (!name) {
+    alert('Channel name is required');
+    setSubmitState(this, false);
+    return;
+  }
+  fd.set('name', name);
+  try {
+    const resp = await fetch(`/chat/edit_group/${GROUP_ID}`, { method: 'POST', body: fd, credentials: 'same-origin' });
+    const data = await readJsonResponse(resp);
+    if (data.success) location.reload();
+    else alert(data.error || 'Failed to update channel profile');
+  } catch (err) {
+    alert(err.message || 'Failed to update channel profile');
     setSubmitState(this, false);
   }
 });

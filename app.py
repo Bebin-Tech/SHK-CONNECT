@@ -3,6 +3,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_socketio import SocketIO
 from flask_login import LoginManager, login_user, logout_user, login_required
 from werkzeug.security import generate_password_hash, check_password_hash
+from sqlalchemy import inspect, text
 from models import db, User, Role
 from admin_routes import admin_bp
 from chat_routes import chat_bp
@@ -85,11 +86,21 @@ def seed_roles():
     db.session.commit()
 
 
+def ensure_schema_columns():
+    """Add small backward-compatible columns for existing SQLite/Postgres installs."""
+    inspector = inspect(db.engine)
+    group_columns = {col['name'] for col in inspector.get_columns('groups')}
+    if 'avatar_url' not in group_columns:
+        db.session.execute(text('ALTER TABLE groups ADD COLUMN avatar_url VARCHAR(255)'))
+        db.session.commit()
+
+
 def initialize_database():
     if not env_bool('AUTO_CREATE_DB', True):
         return
     with app.app_context():
         db.create_all()
+        ensure_schema_columns()
         seed_roles()
 
 

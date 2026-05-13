@@ -15,6 +15,34 @@ def apply_default_group_access(group):
     elif current_user.role:
         group.roles.append(current_user.role)
 
+
+def can_manage_group(group):
+    role_name = current_user.role.name if current_user.role else 'Member'
+    return role_name in ['Admin', 'Owner'] or group.created_by == current_user.id
+
+
+def save_channel_avatar(file):
+    if not file or not file.filename:
+        return None
+
+    ftype, ext = get_file_type(file.filename)
+    if ftype != 'image':
+        raise ValueError('Please upload an image file.')
+
+    file.seek(0, 2)
+    size_bytes = file.tell()
+    file.seek(0)
+    if size_bytes > MAX_FILE_SIZE_MB * 1024 * 1024:
+        raise ValueError(f'File too large. Max {MAX_FILE_SIZE_MB}MB allowed.')
+
+    import uuid
+    safe_name = f"{uuid.uuid4().hex}.{ext}"
+    upload_root = current_app.config.get('UPLOAD_FOLDER', os.path.join(current_app.root_path, 'static', 'uploads'))
+    upload_dir = os.path.join(upload_root, 'channel_profiles')
+    os.makedirs(upload_dir, exist_ok=True)
+    file.save(os.path.join(upload_dir, safe_name))
+    return f'/static/uploads/channel_profiles/{safe_name}'
+
 @chat_bp.route('/')
 @chat_bp.route('/<int:group_id>')
 @login_required
@@ -93,8 +121,7 @@ def connect_roles(group_id):
     group = Group.query.get_or_404(group_id)
     
     # Only Admin, Owner, or Group Creator can connect roles
-    role_name = current_user.role.name if current_user.role else 'Member'
-    if role_name not in ['Admin', 'Owner'] and group.created_by != current_user.id:
+    if not can_manage_group(group):
         return jsonify({'error': 'Unauthorized'}), 403
         
     role_ids = request.form.getlist('role_ids')
@@ -108,6 +135,39 @@ def connect_roles(group_id):
             
     db.session.commit()
     return jsonify({'success': True})
+
+
+@chat_bp.route('/edit_group/<int:group_id>', methods=['POST'])
+@login_required
+def edit_group(group_id):
+    group = Group.query.get_or_404(group_id)
+    if not can_manage_group(group):
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    name = (request.form.get('name') or '').strip()
+    description = (request.form.get('description') or '').strip()
+    if not name:
+        return jsonify({'error': 'Channel name is required'}), 400
+
+    avatar = request.files.get('avatar')
+    try:
+        avatar_url = save_channel_avatar(avatar) if avatar and avatar.filename else None
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 400
+
+    group.name = name
+    group.description = description
+    if avatar_url:
+        group.avatar_url = avatar_url
+
+    db.session.commit()
+    return jsonify({
+        'success': True,
+        'id': group.id,
+        'name': group.name,
+        'description': group.description,
+        'avatar_url': group.avatar_url
+    })
 
 ALLOWED_EXTENSIONS = {
     'image': {'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'},

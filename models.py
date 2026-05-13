@@ -53,6 +53,7 @@ class Group(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.String(255))
+    avatar_url = db.Column(db.String(255))
     invite_code = db.Column(db.String(10), unique=True) # For invite links
     is_archived = db.Column(db.Boolean, default=False)
     created_by = db.Column(db.Integer, db.ForeignKey('users.id'))
