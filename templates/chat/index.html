@@ -1,9 +1,10 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="flex h-full -m-4 lg:-m-10 bg-white relative">
+<div class="chat-layout flex h-full min-h-0 -m-4 lg:-m-10 bg-white relative overflow-hidden">
+  <div id="channel-overlay" onclick="closeChannels()" class="fixed top-16 bottom-20 left-0 right-0 z-30 bg-black/40 hidden opacity-0 transition-opacity duration-300 lg:hidden"></div>
 
   <!-- Channel Sidebar -->
-  <aside id="channel-sidebar" class="fixed inset-y-0 left-0 z-20 w-64 border-r bg-gray-50 flex flex-col flex-shrink-0 transform -translate-x-full lg:relative lg:translate-x-0 transition-transform duration-300">
+  <aside id="channel-sidebar" class="fixed top-16 bottom-20 left-0 z-40 w-[82vw] max-w-72 border-r bg-gray-50 flex flex-col flex-shrink-0 transform -translate-x-full lg:static lg:inset-auto lg:w-64 lg:max-w-none lg:translate-x-0 transition-transform duration-300">
     <div class="p-4 border-b bg-white">
       <div class="flex items-center justify-between mb-3">
         <h3 class="text-base font-bold text-[#1A237E]">Channels</h3>
@@ -19,7 +20,7 @@
     </div>
     <nav class="flex-1 overflow-y-auto p-2 space-y-1">
       {% for g in groups %}
-      <a href="{{ url_for('chat.index', group_id=g.id) }}"
+      <a href="{{ url_for('chat.index', group_id=g.id) }}" onclick="closeChannels()"
          class="flex items-center gap-2 p-3 rounded-xl transition
                 {% if group and group.id == g.id %}bg-[#1A237E] text-white{% else %}hover:bg-white text-gray-700{% endif %}">
         <div class="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs
@@ -49,22 +50,22 @@
   </aside>
 
   <!-- Main Chat Area -->
-  <main class="flex-1 flex flex-col min-w-0">
+  <main class="flex-1 flex flex-col min-w-0 min-h-0">
     {% if group %}
     <!-- Header -->
-    <header class="h-14 border-b flex items-center justify-between px-3 lg:px-5 bg-white flex-shrink-0">
-      <div class="flex items-center gap-2">
+    <header class="min-h-14 border-b flex items-center justify-between gap-2 px-3 lg:px-5 py-2 bg-white flex-shrink-0">
+      <div class="flex items-center gap-2 min-w-0">
         <button onclick="toggleChannels()" class="lg:hidden p-2 text-gray-400 hover:bg-gray-50 rounded-lg">
           <i data-lucide="hash"></i>
         </button>
         <div class="w-8 h-8 bg-blue-100 text-[#1A237E] rounded-lg hidden sm:flex items-center justify-center font-bold text-sm">#</div>
-        <div>
-          <h3 class="font-bold text-sm text-[#1A237E]">{{ group.name }}</h3>
-          <p class="text-[10px] text-gray-400">{{ group.description or 'Team Channel' }}</p>
+        <div class="min-w-0">
+          <h3 class="font-bold text-sm text-[#1A237E] truncate">{{ group.name }}</h3>
+          <p class="hidden sm:block text-[10px] text-gray-400 truncate">{{ group.description or 'Team Channel' }}</p>
         </div>
       </div>
-      <div class="flex items-center gap-3">
-        <span id="online-count" class="text-xs text-gray-400 font-semibold flex items-center gap-1">
+      <div class="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
+        <span id="online-count" class="hidden md:flex text-xs text-gray-400 font-semibold items-center gap-1">
           <i data-lucide="users" class="w-3.5 h-3.5"></i> {{ group.members.count() }} members
         </span>
         
@@ -72,7 +73,7 @@
         <button onclick="document.getElementById('connectRolesModal').classList.remove('hidden')"
                 class="p-2 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition shadow-sm border border-indigo-100 flex items-center gap-2" title="Connect Roles">
           <i data-lucide="link" class="w-4 h-4"></i>
-          <span class="text-xs font-bold">CONNECT</span>
+          <span class="hidden sm:inline text-xs font-bold">CONNECT</span>
         </button>
         {% endif %}
 
@@ -86,7 +87,7 @@
     </header>
 
     <!-- File Preview Banner -->
-    <div id="file-preview-bar" class="hidden px-5 py-2 bg-amber-50 border-b border-amber-100 flex items-center gap-3">
+    <div id="file-preview-bar" class="hidden px-3 sm:px-5 py-2 bg-amber-50 border-b border-amber-100 flex items-center gap-3">
       <i data-lucide="paperclip" class="w-4 h-4 text-amber-500 flex-shrink-0"></i>
       <img id="file-preview-img" class="hidden h-12 w-12 object-cover rounded-lg border" src="" alt="">
       <div class="flex-1 min-w-0">
@@ -97,7 +98,7 @@
     </div>
 
     <!-- Reply Banner -->
-    <div id="reply-banner" class="hidden px-5 py-2 bg-blue-50 border-b border-blue-100 flex items-center justify-between">
+    <div id="reply-banner" class="hidden px-3 sm:px-5 py-2 bg-blue-50 border-b border-blue-100 flex items-center justify-between gap-2">
       <div class="flex items-center gap-2 text-xs">
         <i data-lucide="corner-up-right" class="w-3.5 h-3.5 text-blue-500"></i>
         <span class="text-gray-500">Replying to <strong id="reply-username" class="text-[#1A237E]"></strong>: <span id="reply-preview" class="italic text-gray-500 truncate max-w-[200px] inline-block align-bottom"></span></span>
@@ -106,7 +107,7 @@
     </div>
 
     <!-- Message Container -->
-    <div id="message-container" class="flex-1 overflow-y-auto p-5 space-y-4 bg-gray-50/30">
+    <div id="message-container" class="flex-1 min-h-0 overflow-y-auto p-3 sm:p-5 space-y-4 bg-gray-50/30">
       <div id="load-more-wrapper" class="flex justify-center pb-4 {% if messages|length < 50 %}hidden{% endif %}">
         <button onclick="loadMoreHistory()" id="load-more-btn"
                 class="text-[10px] font-bold text-gray-400 hover:text-[#1A237E] uppercase tracking-widest bg-white px-4 py-2 rounded-full border shadow-sm transition">
@@ -124,7 +125,7 @@
                       {% if r=='Admin' %}bg-blue-100 text-blue-700{% elif r=='Owner' %}bg-purple-100 text-purple-700{% elif r=='ED' %}bg-rose-100 text-rose-700{% elif r=='Manager' %}bg-amber-100 text-amber-700{% elif r=='Accounts' %}bg-indigo-100 text-indigo-700{% elif r=='Staff' %}bg-emerald-100 text-emerald-700{% else %}bg-orange-100 text-orange-600{% endif %}">
             {{ msg.author.username[0].upper() if msg.author else '?' }}
           </div>
-          <div class="max-w-[85%] lg:max-w-[65%]">
+          <div class="message-content max-w-[85%] lg:max-w-[65%] min-w-0">
             <div class="flex items-center gap-1.5 mb-1 {% if is_me %}justify-end{% endif %}">
               <span class="text-xs font-bold text-gray-800">{{ msg.author.username if msg.author else 'Unknown' }}</span>
               <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full
@@ -135,7 +136,7 @@
               {% set ext = msg.file_url.rsplit('.',1)[-1].lower() %}
               {% if ext in ['png','jpg','jpeg','gif','webp'] %}
               <a href="{{ msg.file_url }}" target="_blank">
-                <img src="{{ msg.file_url }}" class="max-w-xs rounded-2xl border shadow-sm hover:opacity-90 transition cursor-zoom-in mt-1" alt="image">
+                <img src="{{ msg.file_url }}" class="max-w-full sm:max-w-xs rounded-2xl border shadow-sm hover:opacity-90 transition cursor-zoom-in mt-1" alt="image">
               </a>
               {% else %}
               <a href="{{ msg.file_url }}" target="_blank" download
@@ -193,7 +194,7 @@
 
     <!-- Footer Input -->
     <div id="typing-indicator" class="px-5 py-1 text-[10px] italic text-gray-400 hidden bg-white"></div>
-    <footer class="p-4 bg-white border-t flex-shrink-0">
+    <footer class="p-3 sm:p-4 bg-white border-t flex-shrink-0">
       <div class="flex items-end gap-2 bg-gray-50 border border-gray-200 rounded-2xl px-3 py-2 focus-within:border-[#1A237E] transition">
         <button onclick="document.getElementById('file-input').click()"
                 class="p-1.5 hover:bg-gray-200 rounded-lg transition text-gray-400 hover:text-[#1A237E] flex-shrink-0" title="Attach file">
@@ -206,7 +207,7 @@
           <i data-lucide="send" class="w-4 h-4"></i>
         </button>
       </div>
-      <p class="text-[10px] text-gray-400 text-center mt-1 uppercase tracking-tighter font-bold">Enter to send · Shift+Enter for new line</p>
+      <p class="hidden sm:block text-[10px] text-gray-400 text-center mt-1 uppercase tracking-tighter font-bold">Enter to send - Shift+Enter for new line</p>
     </footer>
 
     {% else %}
@@ -223,7 +224,7 @@
 
 <!-- Modals -->
 <div id="createChannelModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-  <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8">
+  <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md max-h-[88dvh] overflow-y-auto p-5 sm:p-8">
     <div class="flex items-center justify-between mb-6">
       <h3 class="text-xl font-bold text-[#1A237E]">Create New Channel</h3>
       <button onclick="document.getElementById('createChannelModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600"><i data-lucide="x" class="w-5 h-5"></i></button>
@@ -243,7 +244,7 @@
 </div>
 
 <div id="connectRolesModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-  <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8">
+  <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md max-h-[88dvh] overflow-y-auto p-5 sm:p-8">
     <div class="flex items-center justify-between mb-6">
       <h3 class="text-xl font-bold text-[#1A237E]">Connect Roles</h3>
       <button onclick="document.getElementById('connectRolesModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600"><i data-lucide="x" class="w-5 h-5"></i></button>
@@ -251,7 +252,7 @@
     <p class="text-xs text-gray-400 mb-4 font-semibold uppercase tracking-wider">Select roles allowed to access this channel</p>
     <form id="connectRolesForm" class="space-y-3">
       <input type="hidden" name="group_id" value="{{ group.id if group else '' }}">
-      <div class="grid grid-cols-2 gap-3 max-h-60 overflow-y-auto pr-2">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-60 overflow-y-auto pr-2">
         {% for r in all_roles %}
         <label class="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:bg-gray-50 transition cursor-pointer">
           <input type="checkbox" name="role_ids" value="{{ r.id }}" {% if group and r in group.roles %}checked{% endif %} class="w-4 h-4 rounded text-[#1A237E] focus:ring-[#1A237E]">
@@ -269,7 +270,41 @@
 <script>
 function toggleChannels() {
   const sidebar = document.getElementById('channel-sidebar');
-  sidebar.classList.toggle('-translate-x-full');
+  const overlay = document.getElementById('channel-overlay');
+  const isOpen = !sidebar.classList.contains('-translate-x-full');
+
+  if (isOpen) {
+    closeChannels();
+    return;
+  }
+
+  overlay.classList.remove('hidden');
+  requestAnimationFrame(() => overlay.classList.remove('opacity-0'));
+  sidebar.classList.remove('-translate-x-full');
+}
+
+function closeChannels() {
+  const sidebar = document.getElementById('channel-sidebar');
+  const overlay = document.getElementById('channel-overlay');
+  sidebar.classList.add('-translate-x-full');
+  overlay.classList.add('opacity-0');
+  setTimeout(() => overlay.classList.add('hidden'), 300);
+}
+
+function setSubmitState(form, isSubmitting) {
+  const button = form.querySelector('button[type="submit"]');
+  if (!button) return;
+  button.disabled = isSubmitting;
+  button.classList.toggle('opacity-70', isSubmitting);
+  button.classList.toggle('cursor-not-allowed', isSubmitting);
+}
+
+async function readJsonResponse(resp) {
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok) {
+    throw new Error(data.error || 'Request failed. Please try again.');
+  }
+  return data;
 }
 
 const GROUP_ID = {{ group.id if group else 'null' }};
@@ -281,20 +316,33 @@ let messageOffset = 50;
 // ── Logic ───────────────────────────────────────────
 document.getElementById('createChannelForm')?.addEventListener('submit', async function(e) {
   e.preventDefault();
+  setSubmitState(this, true);
   const fd = new FormData(this);
-  const resp = await fetch('/chat/create_group', { method: 'POST', body: fd });
-  const data = await resp.json();
-  if (data.success) location.href = `/chat/${data.id}`;
-  else alert(data.error || 'Failed to create channel');
+  try {
+    const resp = await fetch('/chat/create_group', { method: 'POST', body: fd, credentials: 'same-origin' });
+    const data = await readJsonResponse(resp);
+    if (data.success) location.href = `/chat/${data.id}`;
+    else alert(data.error || 'Failed to create channel');
+  } catch (err) {
+    alert(err.message || 'Failed to create channel');
+    setSubmitState(this, false);
+  }
 });
 
 document.getElementById('connectRolesForm')?.addEventListener('submit', async function(e) {
   e.preventDefault();
+  if (!GROUP_ID) return alert('Select a channel before connecting roles.');
+  setSubmitState(this, true);
   const fd = new FormData(this);
-  const resp = await fetch(`/chat/connect_roles/${GROUP_ID}`, { method: 'POST', body: fd });
-  const data = await resp.json();
-  if (data.success) location.reload();
-  else alert(data.error || 'Failed to connect roles');
+  try {
+    const resp = await fetch(`/chat/connect_roles/${GROUP_ID}`, { method: 'POST', body: fd, credentials: 'same-origin' });
+    const data = await readJsonResponse(resp);
+    if (data.success) location.reload();
+    else alert(data.error || 'Failed to connect roles');
+  } catch (err) {
+    alert(err.message || 'Failed to connect roles');
+    setSubmitState(this, false);
+  }
 });
 
 function setReply(id, user, preview) {
@@ -379,7 +427,7 @@ function avatarCls(role) {
 }
 function renderAttachment(data) {
   if (!data.file_url) return '';
-  if (data.file_type === 'image') return `<a href="${data.file_url}" target="_blank"><img src="${data.file_url}" class="max-w-xs rounded-2xl border shadow-sm hover:opacity-90 transition mt-1"></a>`;
+  if (data.file_type === 'image') return `<a href="${data.file_url}" target="_blank"><img src="${data.file_url}" class="max-w-full sm:max-w-xs rounded-2xl border shadow-sm hover:opacity-90 transition mt-1"></a>`;
   const ext = (data.file_name||data.file_url).split('.').pop().toUpperCase();
   return `<a href="${data.file_url}" target="_blank" download class="flex items-center gap-2 p-3 rounded-2xl border bg-white shadow-sm hover:shadow-md transition mt-1"><div class="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0"><i data-lucide="file-text" class="w-4 h-4 text-[#1A237E]"></i></div><div class="min-w-0 flex-1"><p class="text-xs font-bold text-gray-800 truncate">${data.file_name || 'File'}</p><p class="text-[10px] text-gray-400">${ext} · Download</p></div><i data-lucide="download" class="w-4 h-4 text-gray-400 flex-shrink-0"></i></a>`;
 }
@@ -391,7 +439,7 @@ function buildMsgHTML(data, isReply=false) {
   const contentHTML = data.file_url ? renderAttachment(data) : `<div class="p-3 rounded-2xl text-sm shadow-sm ${isMe?'bg-[#1A237E] text-white rounded-tr-none':'bg-white text-gray-800 rounded-tl-none border'}">${data.content||''}</div>`;
   return `<div class="flex items-start gap-2 ${isMe?'flex-row-reverse':''}">
     <div class="${sz} flex-shrink-0 flex items-center justify-center font-bold ${avatarCls(role)}">${data.username[0].toUpperCase()}</div>
-    <div class="${isReply?'flex-1':'max-w-[65%]'}">
+    <div class="${isReply?'flex-1':'message-content max-w-[85%] lg:max-w-[65%] min-w-0'}">
       <div class="flex items-center gap-1.5 mb-1 ${isMe?'justify-end':''}">
         <span class="${isReply?'text-[11px]':'text-xs'} font-bold text-gray-800">${data.username}</span>${roleBadge(role)}<span class="text-[10px] text-gray-400">${data.timestamp}</span>
       </div>
@@ -428,7 +476,11 @@ if (GROUP_ID) {
       const p = document.getElementById(`msg-${data.parent_id}`);
       if (p) {
         let t = p.querySelector('.reply-thread');
-        if (!t) { t = document.createElement('div'); t.className = 'reply-thread mt-3 ml-4 pl-4 border-l-2 border-gray-100 space-y-3'; p.querySelector('.max-w-\\[65\\%\\]').appendChild(t); }
+        if (!t) {
+          t = document.createElement('div');
+          t.className = 'reply-thread mt-3 ml-4 pl-4 border-l-2 border-gray-100 space-y-3';
+          (p.querySelector('.message-content') || p).appendChild(t);
+        }
         t.insertAdjacentHTML('beforeend', buildMsgHTML(data, true));
       }
     } else {

@@ -15,8 +15,9 @@
                         radial-gradient(circle at 80% 80%, rgba(212, 175, 55, 0.1), transparent),
                         linear-gradient(135deg, #FFFFFF 0%, #F5F7FA 100%);
             background-attachment: fixed;
-            min-height: screen;
+            min-height: 100vh;
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
             padding: 1.5rem;
@@ -28,20 +29,20 @@
         }
     </style>
 </head>
-<body class="p-6 relative">
+<body class="p-4 sm:p-6 relative">
     <!-- Top Left Branding -->
-    <div class="absolute top-6 left-8 flex items-center gap-6 z-20">
-        <div class="w-24 h-24 transform hover:scale-110 transition-all duration-500">
+    <div class="mb-5 flex items-center justify-center gap-3 sm:absolute sm:top-6 sm:left-8 sm:mb-0 sm:gap-6 z-20">
+        <div class="w-16 h-16 sm:w-24 sm:h-24 transform hover:scale-110 transition-all duration-500">
             <img src="{{ url_for('static', filename='img/shk_logo_new.png') }}" alt="Logo" class="w-full h-full object-contain filter drop-shadow-md">
         </div>
-        <h1 class="text-xl font-black text-[#1A237E] tracking-tighter uppercase">
+        <h1 class="text-lg sm:text-xl font-black text-[#1A237E] tracking-tighter uppercase">
             SHK <span class="text-[#D4AF37]">CONNECT</span>
         </h1>
     </div>
 
-    <div class="glass-card p-10 rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.15)] w-full relative z-10" style="max-width: 450px;">
-        <div class="text-center mb-8">
-            <h2 class="text-3xl font-bold text-[#1A237E]">Sign In</h2>
+    <div class="glass-card p-6 sm:p-10 rounded-[2rem] sm:rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.15)] w-full relative z-10" style="max-width: 450px;">
+        <div class="text-center mb-6 sm:mb-8">
+            <h2 class="text-3xl sm:text-4xl font-bold text-[#1A237E]">Sign In</h2>
             <p class="text-gray-400 text-sm mt-2 font-medium">Welcome back to SHK Industries</p>
         </div>
 
@@ -56,22 +57,22 @@
           {% endif %}
         {% endwith %}
 
-        <form action="{{ url_for('login') }}" method="POST" class="space-y-6">
+        <form action="{{ url_for('login') }}" method="POST" class="space-y-5 sm:space-y-6">
             <div>
                 <label class="block text-sm font-semibold mb-2 text-gray-700">Email Address</label>
-                <input type="email" name="email" class="w-full p-4 border border-gray-200 rounded-xl outline-none focus:border-[#1A237E] focus:ring-1 focus:ring-[#1A237E] transition-all" placeholder="name@shkindustries.com" required>
+                <input type="email" name="email" class="w-full p-3.5 sm:p-4 border border-gray-200 rounded-xl outline-none focus:border-[#1A237E] focus:ring-1 focus:ring-[#1A237E] transition-all" placeholder="name@shkindustries.com" required>
             </div>
             <div>
                 <label class="block text-sm font-semibold mb-2 text-gray-700">Password</label>
-                <input type="password" name="password" class="w-full p-4 border border-gray-200 rounded-xl outline-none focus:border-[#1A237E] focus:ring-1 focus:ring-[#1A237E] transition-all" placeholder="••••••••" required>
+                <input type="password" name="password" class="w-full p-3.5 sm:p-4 border border-gray-200 rounded-xl outline-none focus:border-[#1A237E] focus:ring-1 focus:ring-[#1A237E] transition-all" placeholder="********" required>
             </div>
             
-            <div class="flex items-center justify-between">
+            <div class="flex items-center justify-between gap-3">
                 <label class="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
-                    <input type="checkbox" name="remember" class="w-4 h-4 rounded border-gray-300 text-[#1A237E] focus:ring-[#1A237E]">
-                    <span>Remember me</span>
+                    <input type="checkbox" name="remember" class="w-5 h-5 sm:w-4 sm:h-4 rounded border-gray-300 text-[#1A237E] focus:ring-[#1A237E]">
+                    <span class="whitespace-nowrap">Remember me</span>
                 </label>
-                <a href="#" class="text-sm text-[#1A237E] font-semibold hover:underline">Forgot Password?</a>
+                <a href="#" class="text-sm text-[#1A237E] font-semibold hover:underline whitespace-nowrap">Forgot Password?</a>
             </div>
 
             <button type="submit" class="w-full bg-[#1A237E] text-white p-4 rounded-xl font-bold hover:bg-[#3949AB] transition shadow-lg hover:shadow-indigo-500/30 transform hover:-translate-y-0.5 active:translate-y-0">
