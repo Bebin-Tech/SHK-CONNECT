@@ -26,9 +26,18 @@
             <i data-lucide="book-open" class="w-4 h-4 text-[#1A237E]"></i>
             <span class="text-sm font-bold text-[#1A237E]">Transcript Log</span>
         </div>
-        <button onclick="window.print()" class="text-xs font-bold text-gray-400 hover:text-[#1A237E] flex items-center gap-1">
-            <i data-lucide="printer" class="w-3.5 h-3.5"></i> PRINT LOG
-        </button>
+        <div class="flex items-center gap-3">
+            {% if current_user.role.name in ['Admin', 'Owner'] %}
+            <a href="{{ url_for('admin.delete_group', group_id=group.id) }}" 
+               onclick="return confirm('Permanently delete this history log?')"
+               class="text-xs font-bold text-red-400 hover:text-red-600 flex items-center gap-1 mr-4">
+                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> DELETE LOG
+            </a>
+            {% endif %}
+            <button onclick="window.print()" class="text-xs font-bold text-gray-400 hover:text-[#1A237E] flex items-center gap-1">
+                <i data-lucide="printer" class="w-3.5 h-3.5"></i> PRINT LOG
+            </button>
+        </div>
     </div>
 
     <div class="flex-1 overflow-y-auto p-6 space-y-6 bg-gray-50/20">
@@ -97,7 +106,7 @@
     </div>
     
     <div class="p-4 bg-gray-50 border-t text-center">
-        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">End of Transcript · SHK Industries Workflow History</p>
+        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">End of Transcript · SHK Industries Connect History</p>
     </div>
   </div>
 </div>

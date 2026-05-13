@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="flex h-full -m-10 bg-white">
+<div class="flex h-full -m-4 lg:-m-10 bg-white relative">
 
   <!-- Channel Sidebar -->
-  <aside class="w-64 border-r bg-gray-50 flex flex-col flex-shrink-0">
+  <aside id="channel-sidebar" class="fixed inset-y-0 left-0 z-20 w-64 border-r bg-gray-50 flex flex-col flex-shrink-0 transform -translate-x-full lg:relative lg:translate-x-0 transition-transform duration-300">
     <div class="p-4 border-b bg-white">
       <div class="flex items-center justify-between mb-3">
         <h3 class="text-base font-bold text-[#1A237E]">Channels</h3>
@@ -52,9 +52,12 @@
   <main class="flex-1 flex flex-col min-w-0">
     {% if group %}
     <!-- Header -->
-    <header class="h-14 border-b flex items-center justify-between px-5 bg-white flex-shrink-0">
+    <header class="h-14 border-b flex items-center justify-between px-3 lg:px-5 bg-white flex-shrink-0">
       <div class="flex items-center gap-2">
-        <div class="w-8 h-8 bg-blue-100 text-[#1A237E] rounded-lg flex items-center justify-center font-bold text-sm">#</div>
+        <button onclick="toggleChannels()" class="lg:hidden p-2 text-gray-400 hover:bg-gray-50 rounded-lg">
+          <i data-lucide="hash"></i>
+        </button>
+        <div class="w-8 h-8 bg-blue-100 text-[#1A237E] rounded-lg hidden sm:flex items-center justify-center font-bold text-sm">#</div>
         <div>
           <h3 class="font-bold text-sm text-[#1A237E]">{{ group.name }}</h3>
           <p class="text-[10px] text-gray-400">{{ group.description or 'Team Channel' }}</p>
@@ -121,7 +124,7 @@
                       {% if r=='Admin' %}bg-blue-100 text-blue-700{% elif r=='Owner' %}bg-purple-100 text-purple-700{% elif r=='ED' %}bg-rose-100 text-rose-700{% elif r=='Manager' %}bg-amber-100 text-amber-700{% elif r=='Accounts' %}bg-indigo-100 text-indigo-700{% elif r=='Staff' %}bg-emerald-100 text-emerald-700{% else %}bg-orange-100 text-orange-600{% endif %}">
             {{ msg.author.username[0].upper() if msg.author else '?' }}
           </div>
-          <div class="max-w-[65%]">
+          <div class="max-w-[85%] lg:max-w-[65%]">
             <div class="flex items-center gap-1.5 mb-1 {% if is_me %}justify-end{% endif %}">
               <span class="text-xs font-bold text-gray-800">{{ msg.author.username if msg.author else 'Unknown' }}</span>
               <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full
@@ -264,6 +267,11 @@
 </div>
 
 <script>
+function toggleChannels() {
+  const sidebar = document.getElementById('channel-sidebar');
+  sidebar.classList.toggle('-translate-x-full');
+}
+
 const GROUP_ID = {{ group.id if group else 'null' }};
 const MY_NAME  = "{{ current_user.username }}";
 let replyToId  = null;

@@ -34,6 +34,40 @@ def get_user_role():
     return 'Member'
 
 
+# ─── Admin Dashboard ──────────────────────────────────────────────────────────
+
+@admin_bp.route('/')
+@login_required
+@admin_or_owner_required
+def index():
+    from models import Expense
+    from datetime import datetime
+    
+    active_groups = Group.query.filter_by(is_archived=False).all()
+    user_count = User.query.count()
+    
+    # Simple monthly stats
+    now = datetime.now()
+    start_of_month = datetime(now.year, now.month, 1)
+    
+    monthly_credit = db.session.query(db.func.sum(Expense.amount)).filter(
+        Expense.type == 'credit', Expense.bill_date >= start_of_month
+    ).scalar() or 0
+    
+    monthly_debit = db.session.query(db.func.sum(Expense.amount)).filter(
+        Expense.type == 'debit', Expense.bill_date >= start_of_month
+    ).scalar() or 0
+    
+    stats = {
+        'users': user_count,
+        'groups': len(active_groups),
+        'monthly_credit': round(monthly_credit, 2),
+        'monthly_debit': round(monthly_debit, 2)
+    }
+    
+    return render_template('admin/dashboard.html', title='Admin Command Center', groups=active_groups, stats=stats)
+
+
 # ─── User Management (Admin only) ─────────────────────────────────────────────
 
 @admin_bp.route('/users')
@@ -161,13 +195,17 @@ def archive_group(group_id):
 
 @admin_bp.route('/groups/<int:group_id>/delete')
 @login_required
-@admin_required
+@admin_or_owner_required
 def delete_group(group_id):
     group = Group.query.get_or_404(group_id)
+    is_history = group.is_archived
     group.members = []
     db.session.delete(group)
     db.session.commit()
     flash(f'Channel "{group.name}" permanently removed.', 'warning')
+    
+    if is_history:
+        return redirect(url_for('admin.history'))
     return redirect(url_for('admin.index'))
 
 # ─── History (All roles, filtered by role) ────────────────────────────────────

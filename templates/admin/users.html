@@ -15,7 +15,7 @@
   </header>
 
   <!-- Stats row -->
-  <div class="grid grid-cols-3 gap-4">
+  <div class="grid grid-cols-2 lg:grid-cols-3 gap-4">
     <div class="bg-white rounded-2xl p-4 border shadow-sm text-center">
       <p class="text-2xl font-bold text-[#1A237E]">{{ users|length }}</p>
       <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Total Users</p>
@@ -32,15 +32,16 @@
 
   <!-- User Table -->
   <div class="bg-white rounded-3xl shadow-sm overflow-hidden border">
-    <div class="p-5 border-b flex items-center justify-between">
+    <div class="p-5 border-b flex items-center justify-between flex-wrap gap-2">
       <h3 class="font-bold text-[#1A237E]">All Users</h3>
-      <div class="relative">
+      <div class="relative w-full sm:w-auto">
         <i data-lucide="search" class="w-3.5 h-3.5 absolute left-3 top-2.5 text-gray-400"></i>
         <input id="userSearch" type="text" placeholder="Search user..."
           oninput="filterUsers(this.value)"
-          class="pl-9 pr-4 py-2 bg-gray-50 border rounded-xl text-sm outline-none w-52">
+          class="pl-9 pr-4 py-2 bg-gray-50 border rounded-xl text-sm outline-none w-full sm:w-52">
       </div>
     </div>
+    <div class="overflow-x-auto">
     <table class="w-full text-left" id="userTable">
       <thead class="bg-gray-50 border-b text-[10px] font-bold text-gray-400 uppercase tracking-widest">
         <tr>

@@ -1,0 +1,34 @@
+services:
+  - type: web
+    name: shk-work-flow
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: PORT
+        value: 5000
+      - key: FLASK_ENV
+        value: production
+      - key: FLASK_DEBUG
+        value: "0"
+      - key: AUTO_CREATE_DB
+        value: "1"
+      - key: SOCKETIO_ASYNC_MODE
+        value: eventlet
+      - key: SECRET_KEY
+        generateValue: true
+      - key: SESSION_COOKIE_SECURE
+        value: "1"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: shk-work-flow-db
+          property: connectionString
+
+databases:
+  - name: shk-work-flow-db
+    plan: free
+    databaseName: shk_work_flow
+    user: shk_work_flow

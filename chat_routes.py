@@ -1,5 +1,5 @@
 import os
-from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for
+from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for, current_app
 from flask_login import login_required, current_user
 from models import db, Message, Group, Role
 from werkzeug.utils import secure_filename
@@ -138,7 +138,8 @@ def upload():
     # Build a safe unique filename
     import uuid
     safe_name = f"{uuid.uuid4().hex}.{ext}"
-    upload_dir = os.path.join('static', 'uploads', ftype)
+    upload_root = current_app.config.get('UPLOAD_FOLDER', os.path.join(current_app.root_path, 'static', 'uploads'))
+    upload_dir = os.path.join(upload_root, ftype)
     os.makedirs(upload_dir, exist_ok=True)
     
     filepath = os.path.join(upload_dir, safe_name)

@@ -1,4 +1,4 @@
-# Shk Industries Work Flow (Flask Edition)
+# SHK Connect (Flask Edition)
 
 A real-time team communication platform built with Python Flask, MySQL, and Socket.io.
 
