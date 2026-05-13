@@ -8,6 +8,13 @@ chat_bp = Blueprint('chat', __name__)
 
 # ... (helper functions)
 
+def apply_default_group_access(group):
+    role_name = current_user.role.name if current_user.role else 'Member'
+    if role_name in ['Admin', 'Owner']:
+        group.roles = Role.query.all()
+    elif current_user.role:
+        group.roles.append(current_user.role)
+
 @chat_bp.route('/')
 @chat_bp.route('/<int:group_id>')
 @login_required
@@ -160,16 +167,17 @@ def upload():
 @login_required
 def create_group():
     import string, random
-    name = request.form.get('name')
-    desc = request.form.get('description')
+    name = (request.form.get('name') or '').strip()
+    desc = (request.form.get('description') or '').strip()
     invite_code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
 
     if name:
         group = Group(name=name, description=desc, created_by=current_user.id, invite_code=invite_code)
+        apply_default_group_access(group)
         group.members.append(current_user)
         db.session.add(group)
         db.session.commit()
-        return jsonify({'success': True, 'id': group.id})
+        return jsonify({'success': True, 'id': group.id, 'name': group.name})
     return jsonify({'error': 'Name is required'}), 400
 
 @chat_bp.route('/archive_group/<int:group_id>', methods=['POST'])

@@ -15,12 +15,13 @@
       </div>
       <div class="relative">
         <i data-lucide="search" class="w-3.5 h-3.5 absolute left-3 top-2.5 text-gray-400"></i>
-        <input type="text" placeholder="Search..." class="w-full pl-8 pr-3 py-2 bg-gray-100 rounded-xl text-xs outline-none">
+        <input id="channel-search" type="text" placeholder="Search..." oninput="filterChannels(this.value)" class="w-full pl-8 pr-3 py-2 bg-gray-100 rounded-xl text-xs outline-none">
       </div>
     </div>
     <nav class="flex-1 overflow-y-auto p-2 space-y-1">
       {% for g in groups %}
       <a href="{{ url_for('chat.index', group_id=g.id) }}" onclick="closeChannels()"
+         data-channel-link data-channel-name="{{ g.name|lower }}"
          class="flex items-center gap-2 p-3 rounded-xl transition
                 {% if group and group.id == g.id %}bg-[#1A237E] text-white{% else %}hover:bg-white text-gray-700{% endif %}">
         <div class="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs
@@ -211,12 +212,35 @@
     </footer>
 
     {% else %}
-    <div class="flex-1 flex flex-col items-center justify-center text-center p-10 bg-gray-50">
+    <div class="flex-1 flex flex-col items-center justify-center text-center p-6 sm:p-10 bg-gray-50">
       <div class="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mb-4">
         <i data-lucide="message-circle" class="w-8 h-8 text-[#1A237E]"></i>
       </div>
       <h2 class="text-xl font-bold text-[#1A237E] mb-1">Select a Channel</h2>
       <p class="text-gray-400 text-sm font-medium">Choose a channel from the sidebar to start chatting.</p>
+      <div class="mt-6 w-full max-w-sm lg:hidden">
+        {% if groups %}
+        <div class="space-y-2 text-left">
+          {% for g in groups %}
+          <a href="{{ url_for('chat.index', group_id=g.id) }}"
+             class="flex items-center gap-3 p-3 rounded-2xl bg-white border border-gray-100 shadow-sm active:scale-[0.99] transition">
+            <div class="w-10 h-10 rounded-xl bg-blue-100 text-[#1A237E] flex items-center justify-center font-bold text-sm">
+              {{ g.name[0].upper() }}
+            </div>
+            <div class="min-w-0 flex-1">
+              <p class="font-bold text-sm text-[#1A237E] truncate">{{ g.name }}</p>
+              <p class="text-[10px] text-gray-400">{{ g.members.count() }} members</p>
+            </div>
+            <i data-lucide="chevron-right" class="w-4 h-4 text-gray-300"></i>
+          </a>
+          {% endfor %}
+        </div>
+        {% else %}
+        <button onclick="document.getElementById('createChannelModal').classList.remove('hidden')" class="w-full py-3 bg-[#1A237E] text-white rounded-xl font-bold flex items-center justify-center gap-2">
+          <i data-lucide="plus" class="w-4 h-4"></i> Create Channel
+        </button>
+        {% endif %}
+      </div>
     </div>
     {% endif %}
   </main>
@@ -291,6 +315,14 @@ function closeChannels() {
   setTimeout(() => overlay.classList.add('hidden'), 300);
 }
 
+function filterChannels(query) {
+  const normalized = query.trim().toLowerCase();
+  document.querySelectorAll('[data-channel-link]').forEach(link => {
+    const name = link.dataset.channelName || '';
+    link.classList.toggle('hidden', normalized && !name.includes(normalized));
+  });
+}
+
 function setSubmitState(form, isSubmitting) {
   const button = form.querySelector('button[type="submit"]');
   if (!button) return;
@@ -318,6 +350,13 @@ document.getElementById('createChannelForm')?.addEventListener('submit', async f
   e.preventDefault();
   setSubmitState(this, true);
   const fd = new FormData(this);
+  const name = (fd.get('name') || '').toString().trim();
+  if (!name) {
+    alert('Channel name is required');
+    setSubmitState(this, false);
+    return;
+  }
+  fd.set('name', name);
   try {
     const resp = await fetch('/chat/create_group', { method: 'POST', body: fd, credentials: 'same-origin' });
     const data = await readJsonResponse(resp);
@@ -451,20 +490,31 @@ function buildMsgHTML(data, isReply=false) {
 
 // ── Socket ──────────────────────────────────────────
 if (GROUP_ID) {
-    const input = document.getElementById('message-input');
+  const input = document.getElementById('message-input');
   const container = document.getElementById('message-container');
+  const sendButton = document.getElementById('send-button');
   let tmo;
-  socket.emit('join', { group_id: GROUP_ID });
+
+  function joinCurrentChannel() {
+    socket.emit('join', { group_id: GROUP_ID });
+  }
+
+  if (socket.connected) joinCurrentChannel();
+  socket.on('connect', joinCurrentChannel);
+  socket.on('reconnect', joinCurrentChannel);
   container.scrollTop = container.scrollHeight;
 
   function send() {
     const content = input.value.trim();
     if (!content && !pendingFile) return;
+    if (!socket.connected) {
+      socket.connect();
+    }
     socket.emit('send_message', { group_id:GROUP_ID, content, parent_id:replyToId, file_url:pendingFile?.url, file_type:pendingFile?.type, file_name:pendingFile?.name });
     input.value = ''; input.style.height = 'auto'; cancelReply(); clearFile();
   }
 
-  document.getElementById('send-button').onclick = send;
+  sendButton.onclick = send;
   input.onkeydown = e => { if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); send(); } };
   input.oninput = function() {
     this.style.height = 'auto'; this.style.height = Math.min(this.scrollHeight, 112)+'px';

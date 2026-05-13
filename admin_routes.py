@@ -34,6 +34,14 @@ def get_user_role():
     return 'Member'
 
 
+def apply_default_group_access(group):
+    role = get_user_role()
+    if role in ['Admin', 'Owner']:
+        group.roles = Role.query.all()
+    elif current_user.role:
+        group.roles.append(current_user.role)
+
+
 # ─── Admin Dashboard ──────────────────────────────────────────────────────────
 
 @admin_bp.route('/')
@@ -171,12 +179,13 @@ def delete_user(user_id):
 @admin_or_owner_required
 def create_group():
     import string, random
-    name = request.form.get('name')
-    desc = request.form.get('description')
+    name = (request.form.get('name') or '').strip()
+    desc = (request.form.get('description') or '').strip()
     invite_code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
 
     if name:
         group = Group(name=name, description=desc, created_by=current_user.id, invite_code=invite_code)
+        apply_default_group_access(group)
         group.members.append(current_user)
         db.session.add(group)
         db.session.commit()

@@ -5,6 +5,17 @@ from datetime import datetime
 
 online_users = {}  # { user_id: { username, role } }
 
+def user_can_access_group(group):
+    if not current_user.is_authenticated or not group or group.is_archived:
+        return False
+
+    role = current_user.role
+    role_name = role.name if role else 'Member'
+    if role_name in ['Admin', 'Owner']:
+        return True
+
+    return current_user in group.members or (role in group.roles if role else False)
+
 def register_socket_handlers(socketio):
 
     @socketio.on('connect')
@@ -24,17 +35,27 @@ def register_socket_handlers(socketio):
 
     @socketio.on('join')
     def on_join(data):
-        group_id = str(data.get('group_id', ''))
-        if group_id:
-            join_room(group_id)
-            group = Group.query.get(int(group_id))
-            if group:
-                emit('new_notification', {
-                    'type': 'join',
-                    'username': current_user.username,
-                    'group_name': group.name,
-                    'timestamp': datetime.now().strftime('%I:%M %p')
-                }, room=group_id, include_self=False)
+        if not current_user.is_authenticated:
+            return
+
+        raw_group_id = data.get('group_id', '')
+        try:
+            group_id = int(raw_group_id)
+        except (TypeError, ValueError):
+            return
+
+        group = Group.query.get(group_id)
+        if not user_can_access_group(group):
+            return
+
+        room_id = str(group_id)
+        join_room(room_id)
+        emit('new_notification', {
+            'type': 'join',
+            'username': current_user.username,
+            'group_name': group.name,
+            'timestamp': datetime.now().strftime('%I:%M %p')
+        }, room=room_id, include_self=False)
 
     @socketio.on('send_message')
     def handle_message(data):
@@ -46,19 +67,26 @@ def register_socket_handlers(socketio):
         file_name = data.get('file_name', '')
         msg_type  = 'file' if file_url else 'text'
 
+        if not current_user.is_authenticated:
+            return
         if not content and not file_url:
             return
         if not group_id:
             return
 
-        group = Group.query.get(int(group_id))
-        if not group:
+        try:
+            group_id = int(group_id)
+        except (TypeError, ValueError):
+            return
+
+        group = Group.query.get(group_id)
+        if not user_can_access_group(group):
             return
 
         msg = Message(
             content=content or file_name,
             user_id=current_user.id,
-            group_id=int(group_id),
+            group_id=group_id,
             parent_id=int(parent_id) if parent_id else None,
             message_type=msg_type,
             file_url=file_url,
