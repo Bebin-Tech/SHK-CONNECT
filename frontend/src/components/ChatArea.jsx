@@ -169,29 +169,41 @@ export default function ChatArea() {
   };
 
   return (
-    <div className="flex flex-1 min-h-0 bg-white">
+    <div className="flex flex-1 min-h-0 bg-white relative">
       
-      <ChannelSidebar 
-        groups={groups} 
-        currentGroupId={groupId} 
-        onMobileClose={() => setMobileChannelsOpen(false)} 
-        onOpenCreateModal={() => setCreateModalOpen(true)}
-      />
+      {/* Sidebar - responsive behavior */}
+      <div className={`
+        ${groupId && !mobileChannelsOpen ? 'hidden' : 'flex'} 
+        lg:flex lg:static fixed inset-0 z-40 bg-white w-full lg:w-80 border-r
+      `}>
+        <ChannelSidebar 
+          groups={groups} 
+          currentGroupId={groupId} 
+          onMobileClose={() => setMobileChannelsOpen(false)} 
+          onOpenCreateModal={() => setCreateModalOpen(true)}
+        />
+      </div>
 
-      <main className="flex-1 flex flex-col min-w-0 bg-[#F4F7FE]/30">
+      <main className={`flex-1 flex flex-col min-w-0 bg-[#F4F7FE]/30 ${!groupId && !mobileChannelsOpen ? 'hidden lg:flex' : 'flex'}`}>
         {current_group ? (
           <>
-            <header className="h-20 border-b flex items-center justify-between px-8 bg-white flex-shrink-0">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 bg-[#F4F7FE] text-[#1A237E] rounded-xl flex items-center justify-center font-black">
-                  <Hash size={20} />
+            <header className="h-16 lg:h-20 border-b flex items-center justify-between px-4 lg:px-8 bg-white flex-shrink-0">
+              <div className="flex items-center gap-3 lg:gap-4">
+                <button 
+                  onClick={() => setMobileChannelsOpen(true)}
+                  className="lg:hidden p-2 text-gray-400 hover:text-[#1A237E]"
+                >
+                  <Menu size={24} />
+                </button>
+                <div className="w-8 h-8 lg:w-10 lg:h-10 bg-[#F4F7FE] text-[#1A237E] rounded-lg lg:rounded-xl flex items-center justify-center font-black">
+                  <Hash size={18} className="lg:size-20" />
                 </div>
-                <div>
-                  <h3 className="font-black text-[#1A237E] flex items-center gap-2">
+                <div className="min-w-0">
+                  <h3 className="font-black text-[#1A237E] text-sm lg:text-base flex items-center gap-2 truncate">
                     {current_group.name}
-                    <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
+                    <div className="w-2 h-2 bg-emerald-500 rounded-full flex-shrink-0"></div>
                   </h3>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{current_group.description || 'CODING'}</p>
+                  <p className="text-[9px] lg:text-[10px] font-bold text-gray-400 uppercase tracking-widest truncate">{current_group.description || 'CODING'}</p>
                 </div>
               </div>
             </header>
@@ -238,10 +250,10 @@ export default function ChatArea() {
               <div ref={messagesEndRef} />
             </div>
 
-            <footer className="p-8 bg-white border-t flex-shrink-0">
-              <div className="relative group">
-                <div className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300">
-                  <Paperclip size={20} />
+            <footer className="p-4 lg:p-8 bg-white border-t flex-shrink-0">
+              <div className="relative group max-w-5xl mx-auto">
+                <div className="absolute left-4 lg:left-6 top-1/2 -translate-y-1/2 text-gray-300">
+                  <Paperclip size={18} className="lg:size-20" />
                 </div>
                 <input 
                   type="text"
@@ -249,16 +261,15 @@ export default function ChatArea() {
                   onChange={handleTypingLocal}
                   onKeyDown={handleKeyDown}
                   placeholder={`Message #${current_group.name}...`}
-                  className="w-full bg-[#F4F7FE] border-none rounded-2xl py-5 pl-16 pr-20 outline-none focus:ring-2 focus:ring-blue-100 text-sm font-medium"
+                  className="w-full bg-[#F4F7FE] border-none rounded-xl lg:rounded-2xl py-4 lg:py-5 pl-12 lg:pl-16 pr-16 lg:pr-20 outline-none focus:ring-2 focus:ring-blue-100 text-sm font-medium"
                 />
                 <button 
                   onClick={handleSend}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-[#1A237E] text-white rounded-xl flex items-center justify-center hover:bg-[#0D145A] transition-all shadow-lg shadow-blue-900/20"
+                  className="absolute right-2 lg:right-4 top-1/2 -translate-y-1/2 w-10 h-10 lg:w-12 lg:h-12 bg-[#1A237E] text-white rounded-lg lg:rounded-xl flex items-center justify-center hover:bg-[#0D145A] transition-all shadow-lg shadow-blue-900/20"
                 >
-                  <Send size={18} />
+                  <Send size={16} lg:size={18} />
                 </button>
               </div>
-              <p className="mt-3 text-[9px] font-bold text-gray-300 uppercase text-center tracking-widest">Enter to send • Shift+Enter for new line • Max 20MB</p>
             </footer>
           </>
         ) : (
