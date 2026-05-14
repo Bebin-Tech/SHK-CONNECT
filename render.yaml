@@ -6,8 +6,6 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.9
-      - key: NODE_VERSION
-        value: 20.11.0
       - key: PORT
         value: 5000
       - key: FLASK_ENV

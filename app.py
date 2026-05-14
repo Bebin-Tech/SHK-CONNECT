@@ -1,7 +1,7 @@
 import os
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_socketio import SocketIO
-from flask_login import LoginManager, login_user, logout_user, login_required
+from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy import inspect, text
 from models import db, User, Role
@@ -68,8 +68,8 @@ login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
 # Register Blueprints
-app.register_blueprint(admin_bp, url_prefix='/api/admin')
-app.register_blueprint(chat_bp, url_prefix='/api/chat')
+app.register_blueprint(admin_bp, url_prefix='/admin')
+app.register_blueprint(chat_bp, url_prefix='/chat')
 
 # Register Socket Handlers
 register_socket_handlers(socketio)
@@ -108,94 +108,59 @@ initialize_database()
 
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 
-# Routes
-@app.route('/api/auth/me')
-def auth_me():
-    if not current_user.is_authenticated:
-        return jsonify({'error': 'Not authenticated'}), 401
-    return jsonify({
-        'id': current_user.id,
-        'username': current_user.username,
-        'email': current_user.email,
-        'role': current_user.role.name if current_user.role else 'Member'
-    })
+@app.route('/')
+def home():
+    if current_user.is_authenticated:
+        return redirect(url_for('chat.index'))
+    return redirect(url_for('login'))
 
-@app.route('/api/auth/login', methods=['POST'])
-def api_login():
-    data = request.get_json() or {}
-    email = data.get('email')
-    password = data.get('password')
-    user = User.query.filter_by(email=email).first()
-    if user and check_password_hash(user.password_hash, password):
-        login_user(user, remember=data.get('remember', False))
-        return jsonify({
-            'success': True, 
-            'user': {
-                'id': user.id, 
-                'username': user.username, 
-                'role': user.role.name if user.role else 'Member'
-            }
-        })
-    return jsonify({'error': 'Invalid email or password'}), 401
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if current_user.is_authenticated:
+        return redirect(url_for('chat.index'))
+    if request.method == 'POST':
+        email = request.form.get('email')
+        password = request.form.get('password')
+        user = User.query.filter_by(email=email).first()
+        if user and check_password_hash(user.password_hash, password):
+            login_user(user, remember=True)
+            return redirect(url_for('chat.index'))
+        flash('Invalid email or password', 'danger')
+    return render_template('login.html', title='Login')
 
-@app.route('/api/auth/signup', methods=['POST'])
-def api_signup():
-    data = request.get_json() or {}
-    username = data.get('username')
-    email = data.get('email')
-    password = data.get('password')
-    
-    if not username or not email or not password:
-        return jsonify({'error': 'All fields are required'}), 400
+@app.route('/signup', methods=['GET', 'POST'])
+def signup():
+    if current_user.is_authenticated:
+        return redirect(url_for('chat.index'))
+    if request.method == 'POST':
+        username = request.form.get('username')
+        email = request.form.get('email')
+        password = request.form.get('password')
         
-    user = User.query.filter_by(email=email).first()
-    if user:
-        return jsonify({'error': 'Email already exists'}), 400
-        
-    member_role = Role.query.filter_by(name='Member').first()
-    new_user = User(
-        username=username, 
-        email=email, 
-        password_hash=generate_password_hash(password),
-        role_id=member_role.id if member_role else None
-    )
-    db.session.add(new_user)
-    db.session.commit()
-    login_user(new_user)
-    return jsonify({
-        'success': True,
-        'user': {
-            'id': new_user.id,
-            'username': new_user.username,
-            'role': new_user.role.name if new_user.role else 'Member'
-        }
-    })
+        if User.query.filter_by(email=email).first():
+            flash('Email already exists', 'danger')
+            return redirect(url_for('signup'))
+            
+        member_role = Role.query.filter_by(name='Member').first()
+        new_user = User(
+            username=username,
+            email=email,
+            password_hash=generate_password_hash(password),
+            role_id=member_role.id if member_role else None
+        )
+        db.session.add(new_user)
+        db.session.commit()
+        login_user(new_user)
+        return redirect(url_for('chat.index'))
+    return render_template('signup.html', title='Sign Up')
 
-@app.route('/api/auth/logout', methods=['POST'])
+@app.route('/logout')
 @login_required
-def api_logout():
+def logout():
     logout_user()
-    return jsonify({'success': True})
-
-from flask import send_from_directory
-
-@app.route('/', defaults={'path': ''})
-@app.route('/<path:path>')
-def serve_react(path):
-    # Don't serve API, static, or socket.io requests through the React catch-all
-    if path.startswith('api/') or path.startswith('static/') or path.startswith('socket.io/'):
-        return "Not found", 404
-        
-    dist_dir = os.path.join(app.root_path, 'frontend', 'dist')
-    
-    # If the file exists, serve it
-    if path != "" and os.path.exists(os.path.join(dist_dir, path)):
-        return send_from_directory(dist_dir, path)
-    
-    # Otherwise, return index.html for client-side routing
-    return send_from_directory(dist_dir, 'index.html')
+    return redirect(url_for('login'))
 
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 5000))
     debug = env_bool('FLASK_DEBUG', False)
-    socketio.run(app, host='0.0.0.0', port=port, debug=debug)
+    socketio.run(app, host='0.0.0.0', port=port, debug=debug, allow_unsafe_werkzeug=True)
