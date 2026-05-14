@@ -1,10 +1,8 @@
 services:
   - type: web
     name: shk-work-flow
-    env: python
+    env: docker
     plan: free
-    buildCommand: pip install -r requirements.txt && cd frontend && npm install && npm run build
-    startCommand: gunicorn app:app
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.9
