@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_required, current_user
-from models import db, User, Role, Group, Message
+from models import db, User, Role, Group, Message, ActivityLog, SupportTicket
 from functools import wraps
 
 admin_bp = Blueprint('admin', __name__)
@@ -78,32 +78,49 @@ def index():
 
 # ─── User Management (Admin only) ─────────────────────────────────────────────
 
+@admin_bp.route('/roles')
+@login_required
+@admin_required
+def get_roles():
+    roles = Role.query.all()
+    return jsonify([{'id': r.id, 'name': r.name} for r in roles])
+
 @admin_bp.route('/users')
 @login_required
 @admin_required
 def users():
     all_users = User.query.all()
-    roles = Role.query.all()
-    return render_template('admin/users.html', title='Manage Users', users=all_users, roles=roles)
+    return jsonify([{
+        'id': u.id,
+        'username': u.username,
+        'email': u.email,
+        'role': u.role.name if u.role else 'Member',
+        'role_id': u.role_id,
+        'is_active': u.is_active,
+        'created_at': u.created_at.strftime('%Y-%m-%d %H:%M')
+    } for u in all_users])
 
 @admin_bp.route('/users/create', methods=['POST'])
 @login_required
 @admin_required
 def create_user():
-    username = request.form.get('username')
-    email = request.form.get('email')
-    password = request.form.get('password')
-    role_id = request.form.get('role_id')
+    data = request.get_json() or {}
+    username = data.get('username')
+    email = data.get('email')
+    password = data.get('password')
+    role_id = data.get('role_id')
+
+    if not username or not email or not password:
+        return jsonify({'error': 'Missing fields'}), 400
 
     if User.query.filter_by(email=email).first():
-        flash('Email already exists.', 'danger')
-    else:
-        user = User(username=username, email=email, role_id=role_id)
-        user.set_password(password)
-        db.session.add(user)
-        db.session.commit()
-        flash(f'User {username} created successfully!', 'success')
-    return redirect(url_for('admin.users'))
+        return jsonify({'error': 'Email already exists'}), 400
+    
+    user = User(username=username, email=email, role_id=role_id)
+    user.set_password(password)
+    db.session.add(user)
+    db.session.commit()
+    return jsonify({'success': True, 'message': f'User {username} created'})
 
 @admin_bp.route('/users/<int:user_id>/toggle', methods=['POST'])
 @login_required
@@ -116,37 +133,26 @@ def toggle_user(user_id):
     db.session.commit()
     return jsonify({'success': True, 'is_active': user.is_active})
 
-@admin_bp.route('/users/<int:user_id>/change_role', methods=['POST'])
-@login_required
-@admin_required
-def change_role(user_id):
-    user = User.query.get_or_404(user_id)
-    role_id = request.form.get('role_id')
-    user.role_id = role_id
-    db.session.commit()
-    flash(f'Role updated for {user.username}.', 'success')
-    return redirect(url_for('admin.users'))
-
 @admin_bp.route('/users/<int:user_id>/edit', methods=['POST'])
 @login_required
 @admin_required
 def edit_user(user_id):
     user = User.query.get_or_404(user_id)
-    username = request.form.get('username', '').strip()
-    email    = request.form.get('email', '').strip()
-    password = request.form.get('password', '').strip()
-    role_id  = request.form.get('role_id')
+    data = request.get_json() or {}
+    
+    username = data.get('username', '').strip()
+    email    = data.get('email', '').strip()
+    password = data.get('password', '').strip()
+    role_id  = data.get('role_id')
 
     if username and username != user.username:
         if User.query.filter_by(username=username).first():
-            flash('Username already taken.', 'danger')
-            return redirect(url_for('admin.users'))
+            return jsonify({'error': 'Username taken'}), 400
         user.username = username
 
     if email and email != user.email:
         if User.query.filter_by(email=email).first():
-            flash('Email already in use.', 'danger')
-            return redirect(url_for('admin.users'))
+            return jsonify({'error': 'Email in use'}), 400
         user.email = email
 
     if password:
@@ -156,21 +162,18 @@ def edit_user(user_id):
         user.role_id = role_id
 
     db.session.commit()
-    flash(f'User {user.username} updated successfully.', 'success')
-    return redirect(url_for('admin.users'))
+    return jsonify({'success': True, 'message': f'User {user.username} updated'})
 
-@admin_bp.route('/users/<int:user_id>/delete', methods=['POST'])
+@admin_bp.route('/users/<int:user_id>/delete', methods=['DELETE'])
 @login_required
 @admin_required
 def delete_user(user_id):
     user = User.query.get_or_404(user_id)
     if user.id == current_user.id:
-        flash('Cannot delete your own account.', 'danger')
-        return redirect(url_for('admin.users'))
+        return jsonify({'error': 'Cannot delete yourself'}), 400
     db.session.delete(user)
     db.session.commit()
-    flash(f'User deleted.', 'warning')
-    return redirect(url_for('admin.users'))
+    return jsonify({'success': True})
 
 # ─── Group Management (Admin only) ────────────────────────────────────────────
 
@@ -217,29 +220,72 @@ def delete_group(group_id):
         return redirect(url_for('admin.history'))
     return redirect(url_for('admin.index'))
 
-# ─── History (All roles, filtered by role) ────────────────────────────────────
+# ─── History Logs (Admin only) ─────────────────────────────────────────────────
 
-@admin_bp.route('/history')
+@admin_bp.route('/history_logs')
 @login_required
-def history():
-    role = get_user_role()
-    if role in ['Admin', 'Owner']:
-        archived_groups = Group.query.filter_by(is_archived=True).all()
+@admin_required
+def get_history_logs():
+    logs = ActivityLog.query.order_by(ActivityLog.timestamp.desc()).limit(100).all()
+    return jsonify([{
+        'id': l.id,
+        'action': l.action,
+        'details': l.details,
+        'username': l.user.username if l.user else 'System',
+        'timestamp': l.timestamp.strftime('%Y-%m-%d %H:%M'),
+        'ip': l.ip_address
+    } for l in logs])
+
+# ─── Support Tickets (All users) ──────────────────────────────────────────────
+
+@admin_bp.route('/tickets')
+@login_required
+def get_tickets():
+    if current_user.role.name == 'Admin':
+        tickets = SupportTicket.query.order_by(SupportTicket.created_at.desc()).all()
     else:
-        # Members only see history of their own groups
-        archived_groups = [g for g in Group.query.filter_by(is_archived=True).all()
-                           if current_user in g.members]
-    return render_template('admin/history.html', title='History', groups=archived_groups)
-
-@admin_bp.route('/history/<int:group_id>')
-@login_required
-def history_detail(group_id):
-    role = get_user_role()
-    group = Group.query.get_or_404(group_id)
-    
-    # Security check
-    if role == 'Member' and current_user not in group.members:
-        flash('Access denied.', 'danger')
-        return redirect(url_for('admin.history'))
+        tickets = SupportTicket.query.filter_by(user_id=current_user.id).order_by(SupportTicket.created_at.desc()).all()
         
-    return render_template('admin/history_detail.html', title=f'History: {group.name}', group=group)
+    return jsonify([{
+        'id': t.id,
+        'subject': t.subject,
+        'description': t.description,
+        'status': t.status,
+        'priority': t.priority,
+        'username': t.user.username,
+        'created_at': t.created_at.strftime('%Y-%m-%d %H:%M')
+    } for t in tickets])
+
+@admin_bp.route('/tickets/create', methods=['POST'])
+@login_required
+def create_ticket():
+    data = request.get_json() or {}
+    subject = data.get('subject')
+    description = data.get('description')
+    priority = data.get('priority', 'medium')
+    
+    if not subject or not description:
+        return jsonify({'error': 'Missing fields'}), 400
+        
+    ticket = SupportTicket(
+        subject=subject, 
+        description=description, 
+        priority=priority, 
+        user_id=current_user.id
+    )
+    db.session.add(ticket)
+    db.session.commit()
+    return jsonify({'success': True, 'id': ticket.id})
+
+@admin_bp.route('/tickets/<int:ticket_id>/status', methods=['POST'])
+@login_required
+@admin_required
+def update_ticket_status(ticket_id):
+    ticket = SupportTicket.query.get_or_404(ticket_id)
+    data = request.get_json() or {}
+    status = data.get('status')
+    if status in ['open', 'in_progress', 'closed']:
+        ticket.status = status
+        db.session.commit()
+        return jsonify({'success': True})
+    return jsonify({'error': 'Invalid status'}), 400

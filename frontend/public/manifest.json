@@ -1,0 +1,45 @@
+{
+  "name": "SHK Connect",
+  "short_name": "SHK",
+  "description": "SHK Industries Enterprise Communication & Management Platform",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F4F7FE",
+  "theme_color": "#1A237E",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/static/img/shk_connect_logo.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg"
+    },
+    {
+      "src": "/static/img/shk_connect_logo.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg"
+    },
+    {
+      "src": "/static/img/shk_connect_logo.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "maskable"
+    }
+  ],
+  "categories": ["business", "productivity"],
+  "shortcuts": [
+    {
+      "name": "Team Chat",
+      "short_name": "Chat",
+      "description": "Open Team Chat",
+      "url": "/chat",
+      "icons": [{ "src": "/static/img/shk_logo_new.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Support",
+      "short_name": "Support",
+      "description": "Open Support Portal",
+      "url": "/support",
+      "icons": [{ "src": "/static/img/shk_logo_new.png", "sizes": "192x192" }]
+    }
+  ]
+}
