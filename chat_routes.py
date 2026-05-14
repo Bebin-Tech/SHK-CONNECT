@@ -43,21 +43,19 @@ def save_channel_avatar(file):
     file.save(os.path.join(upload_dir, safe_name))
     return f'/static/uploads/channel_profiles/{safe_name}'
 
-@chat_bp.route('/')
-@chat_bp.route('/<int:group_id>')
+
+
+@chat_bp.route('/init')
+@chat_bp.route('/init/<int:group_id>')
 @login_required
-def index(group_id=None):
+def api_init(group_id=None):
     role_obj = current_user.role
     role_name = role_obj.name if role_obj else 'Member'
-
-    # Groups where user is a member OR user's role is connected
     from sqlalchemy import or_
     
     if role_name in ['Admin', 'Owner']:
-        # Admins see everything active
         groups = Group.query.filter_by(is_archived=False).order_by(Group.created_at.asc()).all()
     else:
-        # Filter groups: (not archived) AND (user is member OR group has user's role)
         groups = Group.query.filter(Group.is_archived == False).filter(
             or_(
                 Group.members.any(id=current_user.id),
@@ -65,26 +63,75 @@ def index(group_id=None):
             )
         ).order_by(Group.created_at.asc()).all()
 
-    group = None
-    messages = []
-    if group_id:
-        group = Group.query.get_or_404(group_id)
-        # Access check
-        is_member = current_user in group.members
-        role_connected = role_obj in group.roles if role_obj else False
-        
-        if role_name not in ['Admin', 'Owner'] and not (is_member or role_connected):
-            flash('You do not have access to this channel.', 'danger')
-            return redirect(url_for('chat.index'))
-            
-        # Pagination: Load latest 50 top-level messages
-        messages = Message.query.filter_by(group_id=group_id, parent_id=None)\
-                               .order_by(Message.timestamp.desc())\
-                               .limit(50).all()
-        messages.reverse() # Show in chronological order
+    groups_data = [{
+        'id': g.id,
+        'name': g.name,
+        'description': g.description,
+        'avatar_url': g.avatar_url,
+        'member_count': g.members.count(),
+        'roles': [r.id for r in g.roles],
+        'created_by': g.created_by
+    } for g in groups]
 
-    all_roles = Role.query.all()
-    return render_template('chat/index.html', title='Team Chat', group=group, groups=groups, all_roles=all_roles, messages=messages)
+    group_data = None
+    messages_data = []
+    
+    if group_id:
+        group = Group.query.get(group_id)
+        if group:
+            is_member = current_user in group.members
+            role_connected = role_obj in group.roles if role_obj else False
+            if role_name not in ['Admin', 'Owner'] and not (is_member or role_connected):
+                return jsonify({'error': 'Unauthorized'}), 403
+            
+            group_data = {
+                'id': group.id,
+                'name': group.name,
+                'description': group.description,
+                'avatar_url': group.avatar_url,
+                'member_count': group.members.count(),
+                'created_by': group.created_by,
+                'roles': [r.id for r in group.roles]
+            }
+            
+            messages = Message.query.filter_by(group_id=group_id, parent_id=None)\
+                                   .order_by(Message.timestamp.desc())\
+                                   .limit(50).all()
+            messages.reverse()
+            for m in messages:
+                messages_data.append({
+                    'id': m.id,
+                    'user_id': m.user_id,
+                    'username': m.author.username if m.author else 'Unknown',
+                    'role': m.author.role.name if m.author and m.author.role else 'Member',
+                    'content': m.content,
+                    'timestamp': m.timestamp.strftime('%b %d, %I:%M %p'),
+                    'file_url': m.file_url,
+                    'file_type': m.message_type if m.message_type != 'text' else None,
+                    'file_name': m.file_url.split('/')[-1] if m.file_url else None,
+                    'replies': [{
+                        'id': r.id,
+                        'user_id': r.user_id,
+                        'username': r.author.username,
+                        'role': r.author.role.name if r.author and r.author.role else 'Member',
+                        'content': r.content,
+                        'timestamp': r.timestamp.strftime('%b %d, %I:%M %p')
+                    } for r in m.replies]
+                })
+
+    all_roles = [{'id': r.id, 'name': r.name} for r in Role.query.all()]
+    
+    return jsonify({
+        'groups': groups_data,
+        'current_group': group_data,
+        'messages': messages_data,
+        'all_roles': all_roles,
+        'current_user': {
+            'id': current_user.id,
+            'username': current_user.username,
+            'role': role_name
+        }
+    })
 
 @chat_bp.route('/load_history/<int:group_id>')
 @login_required
