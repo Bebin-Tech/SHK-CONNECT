@@ -42,6 +42,81 @@ def apply_default_group_access(group):
         group.roles.append(current_user.role)
 
 
+# ─── Admin Dashboard Stats ────────────────────────────────────────────────────
+
+@admin_bp.route('/stats')
+@login_required
+@admin_or_owner_required
+def get_stats():
+    from models import Expense
+    from datetime import datetime
+    
+    active_groups = Group.query.filter_by(is_archived=False).all()
+    user_count = User.query.count()
+    
+    now = datetime.now()
+    start_of_month = datetime(now.year, now.month, 1)
+    
+    monthly_credit = db.session.query(db.func.sum(Expense.amount)).filter(
+        Expense.type == 'credit', Expense.bill_date >= start_of_month
+    ).scalar() or 0
+    
+    monthly_debit = db.session.query(db.func.sum(Expense.amount)).filter(
+        Expense.type == 'debit', Expense.bill_date >= start_of_month
+    ).scalar() or 0
+    
+    return jsonify({
+        'users': user_count,
+        'groups': len(active_groups),
+        'monthly_credit': round(monthly_credit, 2),
+        'monthly_debit': round(monthly_debit, 2),
+        'active_channels': [{
+            'id': g.id,
+            'name': g.name,
+            'invite_code': g.invite_code,
+            'description': g.description
+        } for g in active_groups]
+    })
+
+@admin_bp.route('/groups/create_api', methods=['POST'])
+@login_required
+@admin_or_owner_required
+def create_group_api():
+    import string, random
+    data = request.get_json() or {}
+    name = (data.get('name') or '').strip()
+    desc = (data.get('description') or '').strip()
+    invite_code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+
+    if not name:
+        return jsonify({'error': 'Name required'}), 400
+        
+    group = Group(name=name, description=desc, created_by=current_user.id, invite_code=invite_code)
+    apply_default_group_access(group)
+    group.members.append(current_user)
+    db.session.add(group)
+    db.session.commit()
+    return jsonify({'success': True, 'id': group.id, 'invite_code': invite_code})
+
+@admin_bp.route('/groups/<int:group_id>/archive_api', methods=['POST'])
+@login_required
+@admin_or_owner_required
+def archive_group_api(group_id):
+    group = Group.query.get_or_404(group_id)
+    group.is_archived = True
+    db.session.commit()
+    return jsonify({'success': True})
+
+@admin_bp.route('/groups/<int:group_id>/delete_api', methods=['DELETE'])
+@login_required
+@admin_or_owner_required
+def delete_group_api(group_id):
+    group = Group.query.get_or_404(group_id)
+    group.members = []
+    db.session.delete(group)
+    db.session.commit()
+    return jsonify({'success': True})
+
 # ─── Admin Dashboard ──────────────────────────────────────────────────────────
 
 @admin_bp.route('/')
@@ -219,6 +294,70 @@ def delete_group(group_id):
     if is_history:
         return redirect(url_for('admin.history'))
     return redirect(url_for('admin.index'))
+
+# ─── History (All roles, filtered by role) ────────────────────────────────────
+
+@admin_bp.route('/history_groups')
+@login_required
+def get_history_groups():
+    role = get_user_role()
+    if role in ['Admin', 'Owner']:
+        groups = Group.query.filter_by(is_archived=True).all()
+    else:
+        # Members only see history of their own groups
+        groups = [g for g in Group.query.filter_by(is_archived=True).all()
+                  if current_user in g.members]
+    
+    return jsonify([{
+        'id': g.id,
+        'name': g.name,
+        'description': g.description,
+        'created_at': g.created_at.strftime('%Y-%m-%d') if g.created_at else 'N/A',
+        'message_count': len(g.messages)
+    } for g in groups])
+
+@admin_bp.route('/history_groups/<int:group_id>')
+@login_required
+def get_history_detail(group_id):
+    group = Group.query.get_or_404(group_id)
+    role = get_user_role()
+    
+    # Security check
+    if role == 'Member' and current_user not in group.members:
+        return jsonify({'error': 'Access denied'}), 403
+        
+    messages = []
+    for msg in group.messages:
+        if not msg.parent_id:
+            msg_role = msg.author.role.name if msg.author and msg.author.role else 'Member'
+            replies = []
+            for rep in msg.replies:
+                rep_role = rep.author.role.name if rep.author and rep.author.role else 'Member'
+                replies.append({
+                    'id': rep.id,
+                    'content': rep.content,
+                    'username': rep.author.username if rep.author else 'Unknown',
+                    'role': rep_role,
+                    'timestamp': rep.timestamp.strftime('%I:%M %p')
+                })
+            
+            messages.append({
+                'id': msg.id,
+                'content': msg.content,
+                'username': msg.author.username if msg.author else 'Unknown',
+                'role': msg_role,
+                'timestamp': msg.timestamp.strftime('%d %b %Y, %I:%M %p'),
+                'message_type': msg.message_type,
+                'file_url': msg.file_url,
+                'replies': replies
+            })
+            
+    return jsonify({
+        'id': group.id,
+        'name': group.name,
+        'description': group.description,
+        'messages': messages
+    })
 
 # ─── History Logs (Admin only) ─────────────────────────────────────────────────
 

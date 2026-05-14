@@ -82,8 +82,8 @@ export default function Layout() {
       <div className="flex-1 flex flex-col min-w-0 bg-white">
         
         {/* Top Header */}
-        <header className="h-20 bg-white border-b px-8 flex items-center justify-between flex-shrink-0 z-20">
-          <div className="flex items-center gap-6 w-full max-w-xl">
+        <header className="h-16 bg-white border-b px-5 lg:px-8 flex items-center justify-between flex-shrink-0 z-20">
+          <div className="hidden lg:flex items-center gap-6 w-full max-w-xl">
             <div className="relative w-full">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
               <input 
@@ -93,7 +93,14 @@ export default function Layout() {
               />
             </div>
           </div>
-          
+          {/* Mobile: show page title */}
+          <div className="lg:hidden flex items-center gap-3">
+            <div className="w-8 h-8 bg-white border border-gray-100 rounded-xl overflow-hidden shadow-sm">
+              <img src="/static/img/shk_connect_logo.jpg" alt="Logo" className="w-full h-full object-cover" />
+            </div>
+            <span className="text-sm font-black text-[#1A237E] uppercase tracking-wider">SHK Connect</span>
+          </div>
+
           <div className="flex items-center gap-6">
             <button className="p-2.5 text-gray-400 hover:text-[#1A237E] bg-gray-50 rounded-xl transition-all">
               <Bell size={20} />
@@ -111,34 +118,36 @@ export default function Layout() {
           </div>
         </header>
 
-        <main className="flex-1 flex overflow-hidden">
+        <main className="flex-1 flex overflow-hidden pb-16 lg:pb-0">
           <Outlet />
         </main>
       </div>
 
-      {/* Mobile Nav Bar */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t py-2 px-4 flex items-center justify-around safe-bottom z-50">
-          <NavLink to="/chat" className={({isActive}) => `flex flex-col items-center gap-1 px-3 py-2 rounded-2xl ${isActive ? 'text-[#1A237E] bg-blue-50' : 'text-gray-400'}`}>
-            <MessageCircle size={20} />
-            <span className="text-[8px] font-black uppercase tracking-widest">Chat</span>
-          </NavLink>
-          <NavLink to="/history" className={({isActive}) => `flex flex-col items-center gap-1 px-3 py-2 rounded-2xl ${isActive ? 'text-[#1A237E] bg-blue-50' : 'text-gray-400'}`}>
-            <Archive size={20} />
-            <span className="text-[8px] font-black uppercase tracking-widest">History</span>
-          </NavLink>
-          <NavLink to="/support" className={({isActive}) => `flex flex-col items-center gap-1 px-3 py-2 rounded-2xl ${isActive ? 'text-[#1A237E] bg-blue-50' : 'text-gray-400'}`}>
-            <LifeBuoy size={20} />
-            <span className="text-[8px] font-black uppercase tracking-widest">Support</span>
+      {/* Mobile Nav Bar - matches screenshots: CHAT | ADMIN | USERS | HISTORY | EXIT */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t flex items-center justify-around z-50 py-2 safe-bottom">
+          <NavLink to="/chat" className={({isActive}) => `flex flex-col items-center gap-1 px-3 py-2 rounded-2xl ${isActive ? 'text-[#1A237E]' : 'text-gray-400'}`}>
+            <MessageCircle size={22} />
+            <span className="text-[9px] font-black uppercase tracking-widest">Chat</span>
           </NavLink>
           {roleName === 'Admin' && (
-            <NavLink to="/admin" className={({isActive}) => `flex flex-col items-center gap-1 px-3 py-2 rounded-2xl ${isActive ? 'text-[#1A237E] bg-blue-50' : 'text-gray-400'}`}>
-              <LayoutDashboard size={20} />
-              <span className="text-[8px] font-black uppercase tracking-widest">Admin</span>
+            <NavLink to="/admin" end className={({isActive}) => `flex flex-col items-center gap-1 px-3 py-2 rounded-2xl ${isActive ? 'text-[#1A237E]' : 'text-gray-400'}`}>
+              <LayoutDashboard size={22} />
+              <span className="text-[9px] font-black uppercase tracking-widest">Admin</span>
             </NavLink>
           )}
-          <button onClick={logout} className="flex flex-col items-center gap-1 px-3 py-2 text-rose-400">
-            <LogOut size={20} />
-            <span className="text-[8px] font-black uppercase tracking-widest">Exit</span>
+          {roleName === 'Admin' && (
+            <NavLink to="/admin/users" className={({isActive}) => `flex flex-col items-center gap-1 px-3 py-2 rounded-2xl ${isActive ? 'text-[#1A237E]' : 'text-gray-400'}`}>
+              <Users size={22} />
+              <span className="text-[9px] font-black uppercase tracking-widest">Users</span>
+            </NavLink>
+          )}
+          <NavLink to="/history" className={({isActive}) => `flex flex-col items-center gap-1 px-3 py-2 rounded-2xl ${isActive ? 'text-[#1A237E]' : 'text-gray-400'}`}>
+            <Archive size={22} />
+            <span className="text-[9px] font-black uppercase tracking-widest">History</span>
+          </NavLink>
+          <button onClick={logout} className="flex flex-col items-center gap-1 px-3 py-2 text-rose-500">
+            <LogOut size={22} />
+            <span className="text-[9px] font-black uppercase tracking-widest">Exit</span>
           </button>
       </nav>
     </div>
