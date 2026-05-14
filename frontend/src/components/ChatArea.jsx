@@ -156,213 +156,133 @@ export default function ChatArea() {
   if (loading) return <div className="flex-1 flex items-center justify-center text-gray-400">Loading...</div>;
 
   const { groups, current_group } = initData;
-  const canManageChannel = current_group && (['Admin', 'Owner'].includes(user.role) || current_group.created_by === user.id);
 
   const getRoleBadge = (r) => {
-    let cls = 'bg-gray-100 text-gray-500';
-    if (r === 'Admin') cls = 'bg-blue-100 text-blue-600';
-    if (r === 'Owner') cls = 'bg-purple-100 text-purple-600';
-    if (r === 'ED') cls = 'bg-rose-100 text-rose-600';
-    if (r === 'Manager') cls = 'bg-amber-100 text-amber-600';
-    if (r === 'Accounts') cls = 'bg-indigo-100 text-indigo-600';
-    if (r === 'Staff') cls = 'bg-emerald-100 text-emerald-600';
-    return <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${cls}`}>{r}</span>;
+    return <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider bg-blue-50 text-blue-500`}>{r}</span>;
   };
 
   const getAvatarCls = (r) => {
-    if (r === 'Admin') return 'bg-blue-100 text-blue-700';
-    if (r === 'Owner') return 'bg-purple-100 text-purple-700';
-    if (r === 'ED') return 'bg-rose-100 text-rose-700';
-    if (r === 'Manager') return 'bg-amber-100 text-amber-700';
-    if (r === 'Accounts') return 'bg-indigo-100 text-indigo-700';
-    if (r === 'Staff') return 'bg-emerald-100 text-emerald-700';
-    return 'bg-orange-100 text-orange-600';
+    if (r === 'Admin') return 'bg-blue-50 text-blue-500';
+    if (r === 'Owner') return 'bg-purple-50 text-purple-500';
+    if (r === 'HR') return 'bg-emerald-50 text-emerald-500';
+    return 'bg-orange-50 text-orange-500';
   };
 
   return (
-    <div className="chat-layout flex flex-1 min-h-0 -m-4 lg:-m-10 bg-white relative overflow-hidden">
+    <div className="flex flex-1 min-h-0 bg-white">
       
-      {mobileChannelsOpen && (
-        <div onClick={() => setMobileChannelsOpen(false)} className="fixed top-16 bottom-20 left-0 right-0 z-30 bg-black/40 lg:hidden transition-opacity"></div>
-      )}
+      <ChannelSidebar 
+        groups={groups} 
+        currentGroupId={groupId} 
+        onMobileClose={() => setMobileChannelsOpen(false)} 
+        onOpenCreateModal={() => setCreateModalOpen(true)}
+      />
 
-      <div className={`fixed lg:static top-16 bottom-20 left-0 z-40 lg:z-auto transition-transform duration-300 transform ${mobileChannelsOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 flex`}>
-        <ChannelSidebar 
-          groups={groups} 
-          currentGroupId={groupId} 
-          onMobileClose={() => setMobileChannelsOpen(false)} 
-          onOpenCreateModal={() => setCreateModalOpen(true)}
-        />
-      </div>
-
-      <main className="flex-1 flex flex-col min-w-0 min-h-0 bg-white">
+      <main className="flex-1 flex flex-col min-w-0 bg-[#F4F7FE]/30">
         {current_group ? (
           <>
-            <header className="min-h-14 border-b flex items-center justify-between gap-2 px-3 lg:px-5 py-2 flex-shrink-0 bg-white z-10">
-              <div className="flex items-center gap-2 min-w-0">
-                <button onClick={() => setMobileChannelsOpen(!mobileChannelsOpen)} className="lg:hidden p-2 text-gray-400 hover:bg-gray-50 rounded-lg">
+            <header className="h-20 border-b flex items-center justify-between px-8 bg-white flex-shrink-0">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 bg-[#F4F7FE] text-[#1A237E] rounded-xl flex items-center justify-center font-black">
                   <Hash size={20} />
-                </button>
-                <div className="w-9 h-9 rounded-xl flex-shrink-0 overflow-hidden flex items-center justify-center font-bold text-sm bg-blue-100 text-[#1A237E]">
-                  {current_group.avatar_url ? (
-                    <img src={current_group.avatar_url} alt={current_group.name} className="w-full h-full object-cover" />
-                  ) : current_group.name[0].toUpperCase()}
                 </div>
-                <div className="min-w-0">
-                  <h3 className="font-bold text-sm text-[#1A237E] truncate">{current_group.name}</h3>
-                  <p className="hidden sm:block text-[10px] text-gray-400 truncate">{current_group.description || 'Team Channel'}</p>
+                <div>
+                  <h3 className="font-black text-[#1A237E] flex items-center gap-2">
+                    {current_group.name}
+                    <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
+                  </h3>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{current_group.description || 'CODING'}</p>
                 </div>
-              </div>
-              
-              <div className="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
-                {canManageChannel && (
-                  <>
-                    <button className="p-2 bg-blue-50 text-[#1A237E] rounded-xl hover:bg-blue-100 transition shadow-sm border border-blue-100 flex items-center gap-2" title="Edit Profile">
-                      <Settings2 size={16} /><span className="hidden sm:inline text-xs font-bold">EDIT</span>
-                    </button>
-                    <button className="p-2 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition shadow-sm border border-indigo-100 flex items-center gap-2" title="Connect Roles">
-                      <LinkIcon size={16} /><span className="hidden sm:inline text-xs font-bold">CONNECT</span>
-                    </button>
-                  </>
-                )}
-                {['Admin', 'Owner'].includes(user.role) && (
-                  <button className="p-2 bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-100 transition shadow-sm border border-rose-100" title="Archive">
-                    <Archive size={16} />
-                  </button>
-                )}
               </div>
             </header>
 
-            <div className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-5 space-y-4 bg-gray-50/30">
-              {messages.map(msg => {
-                const isMe = msg.user_id === user.id;
-                return (
-                  <div key={msg.id} className={`flex items-start gap-3 ${isMe ? 'flex-row-reverse' : ''}`}>
-                    <div className={`w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center font-bold text-xs ${getAvatarCls(msg.role)}`}>
-                      {msg.username[0].toUpperCase()}
+            <div className="flex-1 overflow-y-auto p-8 space-y-6">
+              {messages.map(msg => (
+                <div key={msg.id} className="flex items-start gap-4 group">
+                  <div className={`w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center font-black text-xs ${getAvatarCls(msg.role)}`}>
+                    {msg.username[0].toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span className="text-xs font-black text-[#1A237E] uppercase">{msg.username}</span>
+                      {getRoleBadge(msg.role)}
+                      <span className="text-[10px] font-bold text-gray-300">{msg.timestamp}</span>
                     </div>
-                    <div className="max-w-[85%] lg:max-w-[65%] min-w-0">
-                      <div className={`flex items-center gap-1.5 mb-1 ${isMe ? 'justify-end' : ''}`}>
-                        <span className="text-xs font-bold text-gray-800">{msg.username}</span>
-                        {getRoleBadge(msg.role)}
-                        <span className="text-[10px] text-gray-400">{msg.timestamp}</span>
-                      </div>
-                      
+                    
+                    <div className="bg-white border border-gray-100 p-4 rounded-2xl shadow-[0_4px_15px_rgba(0,0,0,0.02)] inline-block min-w-[120px]">
                       {msg.file_url ? (
-                        msg.file_type === 'image' ? (
-                          <a href={msg.file_url} target="_blank" rel="noreferrer">
-                            <img src={msg.file_url} className="max-w-full sm:max-w-xs rounded-2xl border shadow-sm hover:opacity-90 transition mt-1" alt="attachment" />
+                        <div className="flex items-center gap-4 border border-gray-50 bg-[#F4F7FE]/50 p-3 rounded-xl">
+                          <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm">
+                            <Archive size={20} className="text-blue-500" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-[11px] font-black text-[#1A237E] uppercase tracking-tighter">{msg.file_name}</p>
+                            <p className="text-[9px] font-bold text-gray-400 uppercase">FILE • CLICK TO DOWNLOAD</p>
+                          </div>
+                          <a href={msg.file_url} download className="text-gray-400 hover:text-[#1A237E]">
+                            <Plus size={18} className="rotate-45" />
                           </a>
-                        ) : (
-                          <a href={msg.file_url} target="_blank" rel="noreferrer" download className="flex items-center gap-2 p-3 rounded-2xl border bg-white shadow-sm hover:shadow-md transition mt-1">
-                            <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
-                              <span className="text-xs font-bold text-[#1A237E]">FILE</span>
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <p className="text-xs font-bold text-gray-800 truncate">{msg.content || msg.file_name}</p>
-                            </div>
-                          </a>
-                        )
+                        </div>
                       ) : (
-                        <div className={`p-3 rounded-2xl text-sm shadow-sm ${isMe ? 'bg-[#1A237E] text-white rounded-tr-none' : 'bg-white text-gray-800 rounded-tl-none border'}`}>
-                          {msg.content}
-                        </div>
+                        <p className="text-sm font-medium text-gray-600 leading-relaxed">{msg.content}</p>
                       )}
-                      
-                      <div className={`mt-1 ${isMe ? 'flex justify-end' : ''}`}>
-                        <button onClick={() => setReplyTo(msg)} className="text-[10px] text-gray-400 hover:text-[#1A237E] font-semibold flex items-center gap-1">
-                          <CornerUpRight size={12} /> Reply
-                        </button>
-                      </div>
-
-                      {msg.replies && msg.replies.length > 0 && (
-                        <div className="mt-3 ml-4 pl-4 border-l-2 border-gray-100 space-y-3">
-                          {msg.replies.map(rep => (
-                            <div key={rep.id} className="flex items-start gap-2">
-                              <div className={`w-6 h-6 rounded-md flex-shrink-0 flex items-center justify-center font-bold text-[10px] ${getAvatarCls(rep.role)}`}>
-                                {rep.username[0].toUpperCase()}
-                              </div>
-                              <div>
-                                <div className="flex items-center gap-1.5 mb-0.5">
-                                  <span className="text-[11px] font-bold text-gray-700">{rep.username}</span>
-                                  {getRoleBadge(rep.role)}
-                                  <span className="text-[10px] text-gray-400">{rep.timestamp}</span>
-                                </div>
-                                <div className={`p-2 rounded-xl text-xs ${rep.user_id === user.id ? 'bg-[#1A237E] text-white' : 'bg-gray-100 text-gray-800'}`}>
-                                  {rep.content}
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                    </div>
+                    <div className="mt-2">
+                      <button onClick={() => setReplyTo(msg)} className="text-[10px] font-black text-gray-400 hover:text-[#1A237E] uppercase tracking-tighter">
+                        Reply
+                      </button>
                     </div>
                   </div>
-                );
-              })}
+                </div>
+              ))}
               <div ref={messagesEndRef} />
             </div>
 
-            {typingUser && <div className="px-5 py-1 text-[10px] italic text-gray-400 bg-white">{typingUser} is typing...</div>}
-            
-            <footer className="p-3 sm:p-4 bg-white border-t flex-shrink-0">
-              {pendingFile && (
-                <div className="mb-2 p-2 bg-amber-50 border border-amber-100 rounded-xl flex items-center gap-3">
-                  <Paperclip size={16} className="text-amber-500" />
-                  <span className="text-xs font-bold text-gray-700 truncate flex-1">{pendingFile.name}</span>
-                  <button onClick={() => setPendingFile(null)} className="text-amber-500"><X size={16} /></button>
+            <footer className="p-8 bg-white border-t flex-shrink-0">
+              <div className="relative group">
+                <div className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300">
+                  <Paperclip size={20} />
                 </div>
-              )}
-              {replyTo && (
-                <div className="mb-2 p-2 bg-blue-50 border border-blue-100 rounded-xl flex items-center gap-3">
-                  <CornerUpRight size={16} className="text-blue-500" />
-                  <span className="text-xs text-gray-500 truncate flex-1">Replying to <strong>{replyTo.username}</strong></span>
-                  <button onClick={() => setReplyTo(null)} className="text-blue-500"><X size={16} /></button>
-                </div>
-              )}
-              <div className="flex items-end gap-2 bg-gray-50 border border-gray-200 rounded-2xl px-3 py-2 focus-within:border-[#1A237E] transition">
-                <button onClick={() => fileInputRef.current?.click()} className="p-1.5 hover:bg-gray-200 rounded-lg transition text-gray-400 hover:text-[#1A237E] flex-shrink-0">
-                  <Paperclip size={16} />
-                </button>
-                <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileChange} />
-                <textarea 
+                <input 
+                  type="text"
                   value={input}
                   onChange={handleTypingLocal}
                   onKeyDown={handleKeyDown}
-                  rows={1} 
-                  placeholder="Type your message..."
-                  className="flex-1 bg-transparent outline-none text-sm py-1 resize-none max-h-28"
-                  style={{ minHeight: '28px' }}
+                  placeholder={`Message #${current_group.name}...`}
+                  className="w-full bg-[#F4F7FE] border-none rounded-2xl py-5 pl-16 pr-20 outline-none focus:ring-2 focus:ring-blue-100 text-sm font-medium"
                 />
-                <button onClick={handleSend} className="p-2.5 bg-[#1A237E] text-white rounded-xl hover:bg-[#3949AB] transition flex-shrink-0">
-                  <Send size={16} />
+                <button 
+                  onClick={handleSend}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-[#1A237E] text-white rounded-xl flex items-center justify-center hover:bg-[#0D145A] transition-all shadow-lg shadow-blue-900/20"
+                >
+                  <Send size={18} />
                 </button>
               </div>
+              <p className="mt-3 text-[9px] font-bold text-gray-300 uppercase text-center tracking-widest">Enter to send • Shift+Enter for new line • Max 20MB</p>
             </footer>
           </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-center p-6 sm:p-10 bg-gray-50">
-            <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mb-4">
-              <MessageCircle size={32} className="text-[#1A237E]" />
-            </div>
-            <h2 className="text-xl font-bold text-[#1A237E] mb-1">Select a Channel</h2>
-            <p className="text-gray-400 text-sm font-medium">Choose a channel from the sidebar to start chatting.</p>
+          <div className="flex-1 flex flex-col items-center justify-center text-center p-10">
+             <div className="w-20 h-20 bg-blue-50 rounded-3xl flex items-center justify-center mb-6">
+                <MessageCircle size={40} className="text-[#1A237E]" />
+             </div>
+             <h2 className="text-2xl font-black text-[#1A237E] mb-2 uppercase tracking-tighter">Select a Channel</h2>
+             <p className="text-gray-400 font-bold max-w-xs mx-auto">Choose a channel from the sidebar to start collaborating with your team.</p>
           </div>
         )}
       </main>
 
-      {/* Create Modal Placeholder */}
       {createModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-[#1A237E]">Create New Channel</h3>
-              <button onClick={() => setCreateModalOpen(false)} className="text-gray-400 hover:text-gray-600"><X size={20}/></button>
+        <div className="fixed inset-0 bg-blue-900/10 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-md p-10">
+            <div className="flex items-center justify-between mb-8">
+              <h3 className="text-2xl font-black text-[#1A237E]">Create Channel</h3>
+              <button onClick={() => setCreateModalOpen(false)} className="text-gray-400 hover:text-gray-600"><X size={24}/></button>
             </div>
-            <form onSubmit={handleCreateChannel} className="space-y-4">
-              <input type="text" value={newChannelName} onChange={e => setNewChannelName(e.target.value)} placeholder="Channel Name" className="w-full p-3 border rounded-xl" required />
-              <textarea value={newChannelDesc} onChange={e => setNewChannelDesc(e.target.value)} placeholder="Description" className="w-full p-3 border rounded-xl h-24 resize-none" />
-              <button type="submit" className="w-full py-3 bg-[#1A237E] text-white rounded-xl font-bold">Create Channel</button>
+            <form onSubmit={handleCreateChannel} className="space-y-6">
+              <input type="text" value={newChannelName} onChange={e => setNewChannelName(e.target.value)} placeholder="Channel Name" className="w-full p-5 bg-gray-50 border-none rounded-2xl outline-none" required />
+              <textarea value={newChannelDesc} onChange={e => setNewChannelDesc(e.target.value)} placeholder="Description" className="w-full p-5 bg-gray-50 border-none rounded-2xl h-24 resize-none outline-none" />
+              <button type="submit" className="w-full py-5 bg-[#1A237E] text-white rounded-2xl font-black shadow-lg">CREATE</button>
             </form>
           </div>
         </div>
