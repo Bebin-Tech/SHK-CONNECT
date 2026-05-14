@@ -3,11 +3,13 @@ services:
     name: shk-work-flow
     env: python
     plan: free
-    buildCommand: pip install -r requirements.txt
+    buildCommand: pip install -r requirements.txt && cd frontend && npm install && npm run build
     startCommand: gunicorn app:app
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.9
+      - key: NODE_VERSION
+        value: 20.11.0
       - key: PORT
         value: 5000
       - key: FLASK_ENV
