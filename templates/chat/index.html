@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 {% set can_manage_channel = group and current_user.role and (current_user.role.name in ['Admin', 'Owner'] or group.created_by == current_user.id) %}
-<div class="chat-layout flex flex-1 min-h-0 -m-4 lg:-m-10 bg-white relative overflow-hidden">
+<div class="chat-layout flex h-full min-h-0 -m-4 lg:-m-10 bg-white relative overflow-hidden">
   <div id="channel-overlay" onclick="closeChannels()" class="fixed top-16 bottom-20 left-0 right-0 z-30 bg-black/40 hidden opacity-0 transition-opacity duration-300 lg:hidden"></div>
 
   <!-- Channel Sidebar -->
