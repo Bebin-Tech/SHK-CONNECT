@@ -1,10 +1,11 @@
 import os
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from flask_socketio import SocketIO
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
+from flask_migrate import Migrate
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy import inspect, text
-from models import db, User, Role
+from models import db, User, Role, Group, Message
 from admin_routes import admin_bp
 from chat_routes import chat_bp
 from socket_handlers import register_socket_handlers
@@ -14,13 +15,11 @@ load_dotenv()
 
 app = Flask(__name__)
 
-
 def normalize_database_url(database_url):
     """Render/Postgres may expose postgres://, while SQLAlchemy expects postgresql://."""
     if database_url and database_url.startswith('postgres://'):
         return database_url.replace('postgres://', 'postgresql://', 1)
     return database_url
-
 
 def env_bool(name, default=False):
     value = os.getenv(name)
@@ -28,17 +27,15 @@ def env_bool(name, default=False):
         return default
     return value.strip().lower() in {'1', 'true', 'yes', 'on'}
 
-
 def socketio_async_mode():
     requested = os.getenv('SOCKETIO_ASYNC_MODE')
     if requested:
         return requested
     try:
-        import eventlet.green.threading  # noqa: F401
+        import eventlet
         return 'eventlet'
-    except Exception:
+    except ImportError:
         return 'threading'
-
 
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'change-this-secret-key-in-render')
 app.config['SQLALCHEMY_DATABASE_URI'] = normalize_database_url(
@@ -56,6 +53,7 @@ app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = os.getenv('SESSION_COOKIE_SAMESITE', 'Lax')
 
 db.init_app(app)
+migrate = Migrate(app, db)
 socketio = SocketIO(
     app,
     cors_allowed_origins=os.getenv('SOCKETIO_CORS_ORIGINS', '*'),
@@ -64,7 +62,6 @@ socketio = SocketIO(
     ping_interval=int(os.getenv('SOCKETIO_PING_INTERVAL', 25)),
 )
 login_manager = LoginManager(app)
-
 login_manager.login_view = 'login'
 
 # Register Blueprints
@@ -76,7 +73,7 @@ register_socket_handlers(socketio)
 
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    return db.session.get(User, int(user_id))
 
 def seed_roles():
     roles = ['Admin', 'Owner', 'Manager', 'Staff', 'Accounts', 'ED', 'Member']
@@ -85,15 +82,14 @@ def seed_roles():
             db.session.add(Role(name=role_name))
     db.session.commit()
 
-
 def ensure_schema_columns():
     """Add small backward-compatible columns for existing SQLite/Postgres installs."""
     inspector = inspect(db.engine)
-    group_columns = {col['name'] for col in inspector.get_columns('groups')}
-    if 'avatar_url' not in group_columns:
-        db.session.execute(text('ALTER TABLE groups ADD COLUMN avatar_url VARCHAR(255)'))
-        db.session.commit()
-
+    if 'groups' in inspector.get_table_names():
+        group_columns = {col['name'] for col in inspector.get_columns('groups')}
+        if 'avatar_url' not in group_columns:
+            db.session.execute(text('ALTER TABLE groups ADD COLUMN avatar_url VARCHAR(255)'))
+            db.session.commit()
 
 def initialize_database():
     if not env_bool('AUTO_CREATE_DB', True):
@@ -103,10 +99,7 @@ def initialize_database():
         ensure_schema_columns()
         seed_roles()
 
-
 initialize_database()
-
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 
 @app.route('/')
 def home():
@@ -122,7 +115,7 @@ def login():
         email = request.form.get('email')
         password = request.form.get('password')
         user = User.query.filter_by(email=email).first()
-        if user and check_password_hash(user.password_hash, password):
+        if user and user.check_password(password):
             login_user(user, remember=True)
             return redirect(url_for('chat.index'))
         flash('Invalid email or password', 'danger')
@@ -145,9 +138,9 @@ def signup():
         new_user = User(
             username=username,
             email=email,
-            password_hash=generate_password_hash(password),
             role_id=member_role.id if member_role else None
         )
+        new_user.set_password(password)
         db.session.add(new_user)
         db.session.commit()
         login_user(new_user)

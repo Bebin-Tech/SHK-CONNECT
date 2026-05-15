@@ -7,32 +7,34 @@ def create_admin():
         # Initialize database tables
         db.create_all()
         
-        # Ensure Admin role exists
-        admin_role = Role.query.filter_by(name='Admin').first()
-        if not admin_role:
-            admin_role = Role(name='Admin')
-            db.session.add(admin_role)
-            db.session.commit()
-            print("Created Admin role.")
+        # Ensure standard roles exist
+        roles = ['Admin', 'Owner', 'Manager', 'Staff', 'Accounts', 'ED', 'Member']
+        for role_name in roles:
+            if not Role.query.filter_by(name=role_name).first():
+                db.session.add(Role(name=role_name))
+        db.session.commit()
 
-        # Create admin user
+        # Create/Update admin user
         email = "admin@shkindustries.com"
-        existing_user = User.query.filter_by(email=email).first()
+        admin_role = Role.query.filter_by(name='Admin').first()
         
+        existing_user = User.query.filter_by(email=email).first()
         if not existing_user:
             admin_user = User(
                 username="SystemAdmin",
                 email=email,
-                password_hash=generate_password_hash("admin123"),
-                role_id=admin_role.id
+                role_id=admin_role.id if admin_role else None
             )
+            admin_user.set_password("admin123")
             db.session.add(admin_user)
             db.session.commit()
             print(f"Admin user created: {email} / admin123")
         else:
-            existing_user.role_id = admin_role.id
+            if admin_role:
+                existing_user.role_id = admin_role.id
+            existing_user.set_password("admin123")
             db.session.commit()
-            print(f"User {email} updated to Admin role.")
+            print(f"User {email} reset to Admin with default password.")
 
 if __name__ == "__main__":
     create_admin()

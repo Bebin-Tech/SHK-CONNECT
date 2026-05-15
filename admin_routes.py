@@ -2,13 +2,13 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from flask_login import login_required, current_user
 from models import db, User, Role, Group, Message, ActivityLog, SupportTicket
 from functools import wraps
+from datetime import datetime
 
 admin_bp = Blueprint('admin', __name__)
 
 # ─── Role Decorators ──────────────────────────────────────────────────────────
 
 def admin_required(f):
-    """Only Admin role can access."""
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not current_user.is_authenticated or not current_user.role or current_user.role.name != 'Admin':
@@ -18,7 +18,6 @@ def admin_required(f):
     return decorated_function
 
 def admin_or_owner_required(f):
-    """Admin or Owner roles can access."""
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not current_user.is_authenticated or not current_user.role or current_user.role.name not in ['Admin', 'Owner']:
@@ -27,21 +26,6 @@ def admin_or_owner_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-def get_user_role():
-    """Helper to get current user role name safely."""
-    if current_user.is_authenticated and current_user.role:
-        return current_user.role.name
-    return 'Member'
-
-
-def apply_default_group_access(group):
-    role = get_user_role()
-    if role in ['Admin', 'Owner']:
-        group.roles = Role.query.all()
-    elif current_user.role:
-        group.roles.append(current_user.role)
-
-
 # ─── Admin Dashboard Stats ────────────────────────────────────────────────────
 
 @admin_bp.route('/stats')
@@ -49,12 +33,11 @@ def apply_default_group_access(group):
 @admin_or_owner_required
 def get_stats():
     from models import Expense
-    from datetime import datetime
-    
+
     active_groups = Group.query.filter_by(is_archived=False).all()
     user_count = User.query.count()
     
-    now = datetime.now()
+    now = datetime.utcnow()
     start_of_month = datetime(now.year, now.month, 1)
     
     monthly_credit = db.session.query(db.func.sum(Expense.amount)).filter(
@@ -92,7 +75,7 @@ def create_group_api():
         return jsonify({'error': 'Name required'}), 400
         
     group = Group(name=name, description=desc, created_by=current_user.id, invite_code=invite_code)
-    apply_default_group_access(group)
+    Group.apply_default_access(group, current_user)
     group.members.append(current_user)
     db.session.add(group)
     db.session.commit()
@@ -124,13 +107,11 @@ def delete_group_api(group_id):
 @admin_or_owner_required
 def index():
     from models import Expense
-    from datetime import datetime
-    
+
     active_groups = Group.query.filter_by(is_archived=False).all()
     user_count = User.query.count()
     
-    # Simple monthly stats
-    now = datetime.now()
+    now = datetime.utcnow()
     start_of_month = datetime(now.year, now.month, 1)
     
     monthly_credit = db.session.query(db.func.sum(Expense.amount)).filter(
@@ -263,7 +244,7 @@ def create_group():
 
     if name:
         group = Group(name=name, description=desc, created_by=current_user.id, invite_code=invite_code)
-        apply_default_group_access(group)
+        Group.apply_default_access(group, current_user)
         group.members.append(current_user)
         db.session.add(group)
         db.session.commit()
@@ -300,13 +281,14 @@ def delete_group(group_id):
 @admin_bp.route('/history_groups')
 @login_required
 def get_history_groups():
-    role = get_user_role()
-    if role in ['Admin', 'Owner']:
+    role_name = current_user.role.name if current_user.role else 'Member'
+    if role_name in ['Admin', 'Owner']:
         groups = Group.query.filter_by(is_archived=True).all()
     else:
         # Members only see history of their own groups
-        groups = [g for g in Group.query.filter_by(is_archived=True).all()
-                  if current_user in g.members]
+        groups = Group.query.filter(Group.is_archived == True).filter(
+            Group.members.any(id=current_user.id)
+        ).all()
     
     return jsonify([{
         'id': g.id,
@@ -320,10 +302,10 @@ def get_history_groups():
 @login_required
 def get_history_detail(group_id):
     group = Group.query.get_or_404(group_id)
-    role = get_user_role()
+    role_name = current_user.role.name if current_user.role else 'Member'
     
     # Security check
-    if role == 'Member' and current_user not in group.members:
+    if role_name == 'Member' and current_user not in group.members:
         return jsonify({'error': 'Access denied'}), 403
         
     messages = []
@@ -380,7 +362,7 @@ def get_history_logs():
 @admin_bp.route('/tickets')
 @login_required
 def get_tickets():
-    if current_user.role.name == 'Admin':
+    if current_user.role and current_user.role.name == 'Admin':
         tickets = SupportTicket.query.order_by(SupportTicket.created_at.desc()).all()
     else:
         tickets = SupportTicket.query.filter_by(user_id=current_user.id).order_by(SupportTicket.created_at.desc()).all()

@@ -14,7 +14,13 @@ def user_can_access_group(group):
     if role_name in ['Admin', 'Owner']:
         return True
 
-    return current_user in group.members or (role in group.roles if role else False)
+    # Check if member or if their role is allowed
+    is_member = group.members.filter_by(id=current_user.id).first() is not None
+    role_allowed = False
+    if role:
+        role_allowed = group.roles.filter_by(id=role.id).first() is not None
+
+    return is_member or role_allowed
 
 def register_socket_handlers(socketio):
 
@@ -38,14 +44,17 @@ def register_socket_handlers(socketio):
         if not current_user.is_authenticated:
             return
 
-        raw_group_id = data.get('group_id', '')
+        raw_group_id = data.get('group_id')
+        if not raw_group_id:
+            return
+
         try:
             group_id = int(raw_group_id)
         except (TypeError, ValueError):
             return
 
-        group = Group.query.get(group_id)
-        if not user_can_access_group(group):
+        group = db.session.get(Group, group_id)
+        if not group or not user_can_access_group(group):
             return
 
         room_id = str(group_id)
@@ -53,12 +62,16 @@ def register_socket_handlers(socketio):
         emit('new_notification', {
             'type': 'join',
             'username': current_user.username,
+            'group_id': group_id,
             'group_name': group.name,
-            'timestamp': datetime.now().strftime('%I:%M %p')
+            'timestamp': datetime.utcnow().strftime('%I:%M %p')
         }, room=room_id, include_self=False)
 
     @socketio.on('send_message')
     def handle_message(data):
+        if not current_user.is_authenticated:
+            return
+
         group_id  = data.get('group_id')
         content   = (data.get('content') or '').strip()
         parent_id = data.get('parent_id')
@@ -67,8 +80,6 @@ def register_socket_handlers(socketio):
         file_name = data.get('file_name', '')
         msg_type  = 'file' if file_url else 'text'
 
-        if not current_user.is_authenticated:
-            return
         if not content and not file_url:
             return
         if not group_id:
@@ -79,27 +90,27 @@ def register_socket_handlers(socketio):
         except (TypeError, ValueError):
             return
 
-        group = Group.query.get(group_id)
-        if not user_can_access_group(group):
+        group = db.session.get(Group, group_id)
+        if not group or not user_can_access_group(group):
             return
 
         msg = Message(
             content=content or file_name,
             user_id=current_user.id,
             group_id=group_id,
-            parent_id=int(parent_id) if parent_id else None,
+            parent_id=int(parent_id) if parent_id and str(parent_id).isdigit() else None,
             message_type=msg_type,
             file_url=file_url,
-            timestamp=datetime.now()
+            timestamp=datetime.utcnow()
         )
         db.session.add(msg)
         db.session.commit()
 
-        role = current_user.role.name if current_user.role else 'Member'
+        role_name = current_user.role.name if current_user.role else 'Member'
 
         reply_preview = None
-        if parent_id:
-            parent_msg = Message.query.get(int(parent_id))
+        if msg.parent_id:
+            parent_msg = db.session.get(Message, msg.parent_id)
             if parent_msg:
                 reply_preview = {
                     'username': parent_msg.author.username if parent_msg.author else 'Unknown',
@@ -109,7 +120,7 @@ def register_socket_handlers(socketio):
         output = {
             'id':           msg.id,
             'username':     current_user.username,
-            'role':         role,
+            'role':         role_name,
             'content':      content,
             'file_url':     file_url,
             'file_type':    file_type,
@@ -117,7 +128,7 @@ def register_socket_handlers(socketio):
             'msg_type':     msg_type,
             'timestamp':    msg.timestamp.strftime('%b %d, %I:%M %p'),
             'group_id':     group_id,
-            'parent_id':    parent_id,
+            'parent_id':    msg.parent_id,
             'reply_preview': reply_preview
         }
 
@@ -135,6 +146,8 @@ def register_socket_handlers(socketio):
 
     @socketio.on('typing')
     def handle_typing(data):
+        if not current_user.is_authenticated:
+            return
         group_id = str(data.get('group_id', ''))
         if group_id:
             emit('user_typing', {'username': current_user.username}, room=group_id, include_self=False)

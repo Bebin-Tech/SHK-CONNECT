@@ -1,25 +1,32 @@
 import os
+import uuid
 from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for, current_app
 from flask_login import login_required, current_user
 from models import db, Message, Group, Role
 from werkzeug.utils import secure_filename
+from sqlalchemy import or_
 
 chat_bp = Blueprint('chat', __name__)
 
-# ... (helper functions)
+ALLOWED_EXTENSIONS = {
+    'image': {'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'},
+    'document': {'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'csv'},
+    'video': {'mp4', 'webm', 'mov'},
+}
+MAX_FILE_SIZE_MB = 20
 
-def apply_default_group_access(group):
-    role_name = current_user.role.name if current_user.role else 'Member'
-    if role_name in ['Admin', 'Owner']:
-        group.roles = Role.query.all()
-    elif current_user.role:
-        group.roles.append(current_user.role)
-
+def get_file_type(filename):
+    ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
+    for ftype, exts in ALLOWED_EXTENSIONS.items():
+        if ext in exts:
+            return ftype, ext
+    return 'file', ext
 
 def can_manage_group(group):
+    if not current_user.is_authenticated:
+        return False
     role_name = current_user.role.name if current_user.role else 'Member'
     return role_name in ['Admin', 'Owner'] or group.created_by == current_user.id
-
 
 def save_channel_avatar(file):
     if not file or not file.filename:
@@ -35,7 +42,6 @@ def save_channel_avatar(file):
     if size_bytes > MAX_FILE_SIZE_MB * 1024 * 1024:
         raise ValueError(f'File too large. Max {MAX_FILE_SIZE_MB}MB allowed.')
 
-    import uuid
     safe_name = f"{uuid.uuid4().hex}.{ext}"
     upload_root = current_app.config.get('UPLOAD_FOLDER', os.path.join(current_app.root_path, 'static', 'uploads'))
     upload_dir = os.path.join(upload_root, 'channel_profiles')
@@ -43,16 +49,13 @@ def save_channel_avatar(file):
     file.save(os.path.join(upload_dir, safe_name))
     return f'/static/uploads/channel_profiles/{safe_name}'
 
-
-
 @chat_bp.route('/')
 @chat_bp.route('/<int:group_id>')
 @login_required
 def index(group_id=None):
     role_obj = current_user.role
     role_name = role_obj.name if role_obj else 'Member'
-    from sqlalchemy import or_
-    
+
     if role_name in ['Admin', 'Owner']:
         groups = Group.query.filter_by(is_archived=False).order_by(Group.created_at.asc()).all()
     else:
@@ -88,18 +91,20 @@ def index(group_id=None):
                            messages=messages, 
                            all_roles=all_roles)
 
-
-
 @chat_bp.route('/load_history/<int:group_id>')
 @login_required
 def load_history(group_id):
-    # Offset-based pagination for older messages
+    group = Group.query.get_or_404(group_id)
+    # Security check (simplified)
+    role_name = current_user.role.name if current_user.role else 'Member'
+    if role_name not in ['Admin', 'Owner'] and current_user not in group.members and (current_user.role not in group.roles if current_user.role else True):
+        return jsonify({'error': 'Unauthorized'}), 403
+
     offset = request.args.get('offset', 0, type=int)
     messages = Message.query.filter_by(group_id=group_id, parent_id=None)\
                            .order_by(Message.timestamp.desc())\
                            .offset(offset).limit(50).all()
     
-    # We return them in descending order for the frontend to prepend
     results = []
     for m in messages:
         results.append({
@@ -110,9 +115,8 @@ def load_history(group_id):
             'timestamp': m.timestamp.strftime('%I:%M %p'),
             'file_url': m.file_url,
             'file_type': m.message_type if m.message_type != 'text' else None,
-            # Simple reply handling for history
             'replies': [{
-                'username': r.author.username,
+                'username': r.author.username if r.author else 'Unknown',
                 'content': r.content,
                 'timestamp': r.timestamp.strftime('%I:%M %p')
             } for r in m.replies]
@@ -124,22 +128,19 @@ def load_history(group_id):
 def connect_roles(group_id):
     group = Group.query.get_or_404(group_id)
     
-    # Only Admin, Owner, or Group Creator can connect roles
     if not can_manage_group(group):
         return jsonify({'error': 'Unauthorized'}), 403
         
     role_ids = request.form.getlist('role_ids')
     
-    # Clear existing roles and add selected ones
     group.roles = []
     for rid in role_ids:
-        r = Role.query.get(rid)
+        r = db.session.get(Role, rid)
         if r:
             group.roles.append(r)
             
     db.session.commit()
     return jsonify({'success': True})
-
 
 @chat_bp.route('/edit_group/<int:group_id>', methods=['POST'])
 @login_required
@@ -173,20 +174,6 @@ def edit_group(group_id):
         'avatar_url': group.avatar_url
     })
 
-ALLOWED_EXTENSIONS = {
-    'image': {'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'},
-    'document': {'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'csv'},
-    'video': {'mp4', 'webm', 'mov'},
-}
-MAX_FILE_SIZE_MB = 20
-
-def get_file_type(filename):
-    ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
-    for ftype, exts in ALLOWED_EXTENSIONS.items():
-        if ext in exts:
-            return ftype, ext
-    return 'file', ext
-
 @chat_bp.route('/upload', methods=['POST'])
 @login_required
 def upload():
@@ -197,7 +184,6 @@ def upload():
     if not file or file.filename == '':
         return jsonify({'error': 'No file selected'}), 400
 
-    # Check file size (read into memory check)
     file.seek(0, 2)
     size_bytes = file.tell()
     file.seek(0)
@@ -206,7 +192,6 @@ def upload():
 
     ftype, ext = get_file_type(file.filename)
     
-    # Build a safe unique filename
     import uuid
     safe_name = f"{uuid.uuid4().hex}.{ext}"
     upload_root = current_app.config.get('UPLOAD_FOLDER', os.path.join(current_app.root_path, 'static', 'uploads'))
@@ -237,7 +222,7 @@ def create_group():
 
     if name:
         group = Group(name=name, description=desc, created_by=current_user.id, invite_code=invite_code)
-        apply_default_group_access(group)
+        Group.apply_default_access(group, current_user)
         group.members.append(current_user)
         db.session.add(group)
         db.session.commit()
@@ -263,8 +248,24 @@ def search():
     if not query:
         return jsonify([])
     
-    # Search in groups or private messages involving the current user
+    # Filter messages from groups the user has access to
+    role_obj = current_user.role
+    role_name = role_obj.name if role_obj else 'Member'
+
+    if role_name in ['Admin', 'Owner']:
+        accessible_group_ids = db.session.query(Group.id).all()
+    else:
+        accessible_group_ids = db.session.query(Group.id).filter(
+            or_(
+                Group.members.any(id=current_user.id),
+                Group.roles.any(id=current_user.role_id)
+            )
+        ).all()
+
+    accessible_group_ids = [g[0] for g in accessible_group_ids]
+
     messages = Message.query.filter(
+        Message.group_id.in_(accessible_group_ids),
         Message.content.ilike(f'%{query}%')
     ).limit(50).all()
     
@@ -272,7 +273,8 @@ def search():
         'id': m.id,
         'content': m.content,
         'user': m.author.username if m.author else 'Unknown',
-        'timestamp': m.timestamp.strftime('%Y-%m-%d %H:%M') if m.timestamp else ''
+        'timestamp': m.timestamp.strftime('%Y-%m-%d %H:%M') if m.timestamp else '',
+        'group_id': m.group_id
     } for m in messages]
     
     return jsonify(results)
