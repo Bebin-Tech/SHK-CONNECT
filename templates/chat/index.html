@@ -611,15 +611,42 @@ if (GROUP_ID) {
   function send() {
     const content = input.value.trim();
     if (!content && !pendingFile) return;
+
     if (!socket.connected) {
+      console.warn('Socket not connected, attempting to reconnect...');
       socket.connect();
+      // We'll try to emit anyway, Socket.IO usually queues it.
     }
-    socket.emit('send_message', { group_id:GROUP_ID, content, parent_id:replyToId, file_url:pendingFile?.url, file_type:pendingFile?.type, file_name:pendingFile?.name });
-    input.value = ''; input.style.height = 'auto'; cancelReply(); clearFile();
+
+    const messageData = {
+        group_id: GROUP_ID,
+        content: content,
+        parent_id: replyToId,
+        file_url: pendingFile?.url,
+        file_type: pendingFile?.type,
+        file_name: pendingFile?.name
+    };
+
+    console.log('Sending message:', messageData);
+    socket.emit('send_message', messageData);
+
+    input.value = '';
+    input.style.height = 'auto';
+    cancelReply();
+    clearFile();
   }
 
-  sendButton.onclick = send;
-  input.onkeydown = e => { if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); send(); } };
+  sendButton.addEventListener('click', (e) => {
+    e.preventDefault();
+    send();
+  });
+
+  input.addEventListener('keydown', (e) => {
+    if ((e.key === 'Enter' || e.keyCode === 13) && !e.shiftKey) {
+      e.preventDefault();
+      send();
+    }
+  });
   input.oninput = function() {
     this.style.height = 'auto'; this.style.height = Math.min(this.scrollHeight, 112)+'px';
     socket.emit('typing', { group_id: GROUP_ID });

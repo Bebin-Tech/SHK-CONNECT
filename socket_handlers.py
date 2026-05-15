@@ -70,79 +70,81 @@ def register_socket_handlers(socketio):
     @socketio.on('send_message')
     def handle_message(data):
         if not current_user.is_authenticated:
-            return
-
-        group_id  = data.get('group_id')
-        content   = (data.get('content') or '').strip()
-        parent_id = data.get('parent_id')
-        file_url  = data.get('file_url')
-        file_type = data.get('file_type', 'file')
-        file_name = data.get('file_name', '')
-        msg_type  = 'file' if file_url else 'text'
-
-        if not content and not file_url:
-            return
-        if not group_id:
+            emit('error', {'message': 'Not authenticated'})
             return
 
         try:
+            group_id  = data.get('group_id')
+            content   = (data.get('content') or '').strip()
+            parent_id = data.get('parent_id')
+            file_url  = data.get('file_url')
+            file_type = data.get('file_type', 'file')
+            file_name = data.get('file_name', '')
+            msg_type  = 'file' if file_url else 'text'
+
+            if not content and not file_url:
+                return
+            if not group_id:
+                return
+
             group_id = int(group_id)
-        except (TypeError, ValueError):
-            return
+            group = db.session.get(Group, group_id)
+            if not group or not user_can_access_group(group):
+                emit('error', {'message': 'Access denied'})
+                return
 
-        group = db.session.get(Group, group_id)
-        if not group or not user_can_access_group(group):
-            return
+            msg = Message(
+                content=content or file_name,
+                user_id=current_user.id,
+                group_id=group_id,
+                parent_id=int(parent_id) if parent_id and str(parent_id).isdigit() else None,
+                message_type=msg_type,
+                file_url=file_url,
+                timestamp=datetime.utcnow()
+            )
+            db.session.add(msg)
+            db.session.commit()
 
-        msg = Message(
-            content=content or file_name,
-            user_id=current_user.id,
-            group_id=group_id,
-            parent_id=int(parent_id) if parent_id and str(parent_id).isdigit() else None,
-            message_type=msg_type,
-            file_url=file_url,
-            timestamp=datetime.utcnow()
-        )
-        db.session.add(msg)
-        db.session.commit()
+            role_name = current_user.role.name if current_user.role else 'Member'
 
-        role_name = current_user.role.name if current_user.role else 'Member'
+            reply_preview = None
+            if msg.parent_id:
+                parent_msg = db.session.get(Message, msg.parent_id)
+                if parent_msg:
+                    reply_preview = {
+                        'username': parent_msg.author.username if parent_msg.author else 'Unknown',
+                        'content': parent_msg.content[:80]
+                    }
 
-        reply_preview = None
-        if msg.parent_id:
-            parent_msg = db.session.get(Message, msg.parent_id)
-            if parent_msg:
-                reply_preview = {
-                    'username': parent_msg.author.username if parent_msg.author else 'Unknown',
-                    'content': parent_msg.content[:80]
-                }
+            output = {
+                'id':           msg.id,
+                'username':     current_user.username,
+                'role':         role_name,
+                'content':      content,
+                'file_url':     file_url,
+                'file_type':    file_type,
+                'file_name':    file_name,
+                'msg_type':     msg_type,
+                'timestamp':    msg.timestamp.strftime('%b %d, %I:%M %p'),
+                'group_id':     group_id,
+                'parent_id':    msg.parent_id,
+                'reply_preview': reply_preview
+            }
 
-        output = {
-            'id':           msg.id,
-            'username':     current_user.username,
-            'role':         role_name,
-            'content':      content,
-            'file_url':     file_url,
-            'file_type':    file_type,
-            'file_name':    file_name,
-            'msg_type':     msg_type,
-            'timestamp':    msg.timestamp.strftime('%b %d, %I:%M %p'),
-            'group_id':     group_id,
-            'parent_id':    msg.parent_id,
-            'reply_preview': reply_preview
-        }
+            emit('receive_message', output, room=str(group_id))
 
-        emit('receive_message', output, room=str(group_id))
-        
-        # Also emit a notification for everyone in the group (excluding sender)
-        emit('new_notification', {
-            'type': 'message',
-            'username': current_user.username,
-            'content': content or 'sent a file',
-            'group_id': group_id,
-            'group_name': group.name,
-            'timestamp': output['timestamp']
-        }, room=str(group_id), include_self=False)
+            # Also emit a notification for everyone in the group (excluding sender)
+            emit('new_notification', {
+                'type': 'message',
+                'username': current_user.username,
+                'content': content or 'sent a file',
+                'group_id': group_id,
+                'group_name': group.name,
+                'timestamp': output['timestamp']
+            }, room=str(group_id), include_self=False)
+        except Exception as e:
+            print(f"Error handling message: {e}")
+            emit('error', {'message': str(e)})
 
     @socketio.on('typing')
     def handle_typing(data):

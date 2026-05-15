@@ -10,12 +10,21 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <script>
         const socket = io({
-            transports: ['websocket', 'polling'],
+            transports: ['polling', 'websocket'],
             reconnection: true,
-            reconnectionAttempts: Infinity,
+            reconnectionAttempts: 10,
             reconnectionDelay: 1000,
             reconnectionDelayMax: 5000,
-            timeout: 20000
+            timeout: 20000,
+            autoConnect: true
+        });
+
+        socket.on('connect', () => {
+            console.log('Socket connected successfully');
+        });
+
+        socket.on('connect_error', (error) => {
+            console.error('Socket connection error:', error);
         });
     </script>
     <style>
