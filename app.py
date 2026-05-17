@@ -1,9 +1,13 @@
 import os
+import sys
+
+# Eventlet monkey patching for SocketIO
 try:
     import eventlet
     eventlet.monkey_patch()
-except ImportError:
-    pass
+except (ImportError, AttributeError):
+    # Some environments or Python versions (like 3.13+) might have issues with eventlet monkey patching
+    print("Warning: Eventlet monkey patching failed or skipped.")
 
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from flask_socketio import SocketIO
