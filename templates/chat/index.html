@@ -59,46 +59,46 @@
   <main class="flex-1 flex flex-col min-w-0 min-h-0">
     {% if group %}
     <!-- Header -->
-    <header class="min-h-14 border-b flex items-center justify-between gap-2 px-3 lg:px-5 py-2 bg-white flex-shrink-0">
+    <header class="min-h-14 border-b border-slate-100 flex items-center justify-between gap-2 px-3 lg:px-5 py-2 bg-white flex-shrink-0">
       <div class="flex items-center gap-2 min-w-0">
-        <button onclick="toggleChannels()" class="lg:hidden p-2 text-gray-400 hover:bg-gray-50 rounded-lg">
+        <button onclick="toggleChannels()" class="lg:hidden p-2 text-slate-400 hover:bg-slate-50 rounded-lg">
           <i data-lucide="hash"></i>
         </button>
         <button type="button" onclick="{% if can_manage_channel %}openChannelProfileModal(){% endif %}"
-                class="w-9 h-9 rounded-xl flex-shrink-0 overflow-hidden {% if can_manage_channel %}cursor-pointer ring-2 ring-transparent hover:ring-blue-100{% else %}cursor-default{% endif %}"
+                class="w-9 h-9 rounded-xl flex-shrink-0 overflow-hidden {% if can_manage_channel %}cursor-pointer ring-2 ring-transparent hover:ring-slate-100{% else %}cursor-default{% endif %}"
                 title="{% if can_manage_channel %}Edit Channel Profile{% else %}Channel Profile{% endif %}">
           {% if group.avatar_url %}
           <img src="{{ group.avatar_url }}" alt="{{ group.name }}" class="w-full h-full object-cover">
           {% else %}
-          <span class="w-full h-full bg-blue-100 text-[#1A237E] flex items-center justify-center font-bold text-sm">{{ group.name[0].upper() }}</span>
+          <span class="w-full h-full bg-slate-100 text-shk-blue flex items-center justify-center font-bold text-sm">{{ group.name[0].upper() }}</span>
           {% endif %}
         </button>
         <div class="min-w-0">
-          <h3 class="font-bold text-sm text-[#1A237E] truncate">{{ group.name }}</h3>
-          <p class="hidden sm:block text-[10px] text-gray-400 truncate">{{ group.description or 'Team Channel' }}</p>
+          <h3 class="font-bold text-sm text-shk-navy truncate">{{ group.name }}</h3>
+          <p class="hidden sm:block text-[10px] text-slate-400 truncate">{{ group.description or 'Team Channel' }}</p>
         </div>
       </div>
       <div class="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
-        <span id="online-count" class="hidden md:flex text-xs text-gray-400 font-semibold items-center gap-1">
+        <span id="online-count" class="hidden md:flex text-xs text-slate-400 font-semibold items-center gap-1">
           <i data-lucide="users" class="w-3.5 h-3.5"></i> {{ group.members.count() }} members
         </span>
         
         {% if can_manage_channel %}
         <button onclick="openChannelProfileModal()"
-                class="p-2 bg-blue-50 text-[#1A237E] rounded-xl hover:bg-blue-100 transition shadow-sm border border-blue-100 flex items-center gap-2" title="Edit Channel Profile">
+                class="p-2 bg-slate-50 text-shk-blue rounded-xl hover:bg-slate-100 transition border border-slate-100 flex items-center gap-2" title="Edit Channel Profile">
           <i data-lucide="settings-2" class="w-4 h-4"></i>
-          <span class="hidden sm:inline text-xs font-bold">EDIT</span>
+          <span class="hidden sm:inline text-xs font-bold uppercase tracking-wider">Edit</span>
         </button>
         <button onclick="document.getElementById('connectRolesModal').classList.remove('hidden')"
-                class="p-2 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition shadow-sm border border-indigo-100 flex items-center gap-2" title="Connect Roles">
+                class="p-2 bg-slate-50 text-shk-blue rounded-xl hover:bg-slate-100 transition border border-slate-100 flex items-center gap-2" title="Connect Roles">
           <i data-lucide="link" class="w-4 h-4"></i>
-          <span class="hidden sm:inline text-xs font-bold">CONNECT</span>
+          <span class="hidden sm:inline text-xs font-bold uppercase tracking-wider">Connect</span>
         </button>
         {% endif %}
 
         {% if current_user.role and current_user.role.name in ['Admin', 'Owner'] %}
         <button onclick="archiveChannel({{ group.id }})"
-                class="p-2 bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-100 transition shadow-sm border border-rose-100" title="Archive & Save to History">
+                class="p-2 bg-rose-50 text-shk-red rounded-xl hover:bg-rose-100 transition border border-rose-100" title="Archive & Save to History">
           <i data-lucide="archive" class="w-4 h-4"></i>
         </button>
         {% endif %}
@@ -211,54 +211,54 @@
       {% endfor %}
     </div>
 
-    <!-- Footer Input -->
-    <div id="typing-indicator" class="px-5 py-1 text-[10px] italic text-gray-400 hidden bg-white"></div>
-    <footer class="p-3 sm:p-4 bg-white border-t flex-shrink-0">
-      <div class="flex items-end gap-2 bg-gray-50 border border-gray-200 rounded-2xl px-3 py-2 focus-within:border-[#1A237E] transition">
+    <!-- Typing Indicator -->
+    <div id="typing-indicator" class="px-5 py-1 text-[10px] italic text-slate-400 hidden bg-white"></div>
+    <footer class="p-3 sm:p-4 bg-white border-t border-slate-100 flex-shrink-0">
+      <div class="flex items-end gap-2 bg-slate-50 border border-slate-200 rounded-2xl px-3 py-2 focus-within:border-shk-blue focus-within:bg-white transition-all shadow-sm">
         <button onclick="document.getElementById('file-input').click()"
-                class="p-1.5 hover:bg-gray-200 rounded-lg transition text-gray-400 hover:text-[#1A237E] flex-shrink-0" title="Attach file">
+                class="p-1.5 hover:bg-slate-200 rounded-lg transition text-slate-400 hover:text-shk-blue flex-shrink-0" title="Attach file">
           <i data-lucide="paperclip" class="w-4 h-4"></i>
         </button>
         <input type="file" id="file-input" class="hidden" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.mp4,.webm">
         <textarea id="message-input" rows="1" placeholder="Type your message..."
-                  class="flex-1 bg-transparent outline-none text-sm py-1 resize-none max-h-28"></textarea>
-        <button id="send-button" class="p-2.5 bg-[#1A237E] text-white rounded-xl hover:bg-[#3949AB] transition flex-shrink-0">
+                  class="flex-1 bg-transparent outline-none text-sm py-1 resize-none max-h-28 text-slate-700 placeholder:text-slate-400"></textarea>
+        <button id="send-button" class="p-2.5 bg-shk-blue text-white rounded-xl hover:bg-shk-navy transition-all flex-shrink-0 shadow-md active:scale-95">
           <i data-lucide="send" class="w-4 h-4"></i>
         </button>
       </div>
-      <p class="hidden sm:block text-[10px] text-gray-400 text-center mt-1 uppercase tracking-tighter font-bold">Enter to send - Shift+Enter for new line</p>
+      <p class="hidden sm:block text-[10px] text-slate-400 text-center mt-1 uppercase tracking-tighter font-bold">Enter to send - Shift+Enter for new line</p>
     </footer>
 
     {% else %}
-    <div class="flex-1 flex flex-col items-center justify-center text-center p-6 sm:p-10 bg-gray-50">
-      <div class="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mb-4">
-        <i data-lucide="message-circle" class="w-8 h-8 text-[#1A237E]"></i>
+    <div class="flex-1 flex flex-col items-center justify-center text-center p-6 sm:p-10 bg-shk-light">
+      <div class="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mb-4">
+        <i data-lucide="message-circle" class="w-8 h-8 text-shk-blue"></i>
       </div>
-      <h2 class="text-xl font-bold text-[#1A237E] mb-1">Select a Channel</h2>
-      <p class="text-gray-400 text-sm font-medium">Choose a channel from the sidebar to start chatting.</p>
+      <h2 class="text-xl font-bold text-shk-navy mb-1">Select a Channel</h2>
+      <p class="text-slate-400 text-sm font-medium">Choose a channel from the sidebar to start chatting.</p>
       <div class="mt-6 w-full max-w-sm lg:hidden">
         {% if groups %}
         <div class="space-y-2 text-left">
           {% for g in groups %}
           <a href="{{ url_for('chat.index', group_id=g.id) }}"
-             class="flex items-center gap-3 p-3 rounded-2xl bg-white border border-gray-100 shadow-sm active:scale-[0.99] transition">
+             class="flex items-center gap-3 p-3 rounded-2xl bg-white border border-slate-100 shadow-sm active:scale-[0.99] transition">
             {% if g.avatar_url %}
             <img src="{{ g.avatar_url }}" alt="{{ g.name }}" class="w-10 h-10 rounded-xl object-cover flex-shrink-0">
             {% else %}
-            <div class="w-10 h-10 rounded-xl bg-blue-100 text-[#1A237E] flex items-center justify-center font-bold text-sm flex-shrink-0">
+            <div class="w-10 h-10 rounded-xl bg-slate-50 text-shk-blue flex items-center justify-center font-bold text-sm flex-shrink-0">
               {{ g.name[0].upper() }}
             </div>
             {% endif %}
             <div class="min-w-0 flex-1">
-              <p class="font-bold text-sm text-[#1A237E] truncate">{{ g.name }}</p>
-              <p class="text-[10px] text-gray-400">{{ g.members.count() }} members</p>
+              <p class="font-bold text-sm text-shk-navy truncate">{{ g.name }}</p>
+              <p class="text-[10px] text-slate-400">{{ g.members.count() }} members</p>
             </div>
-            <i data-lucide="chevron-right" class="w-4 h-4 text-gray-300"></i>
+            <i data-lucide="chevron-right" class="w-4 h-4 text-slate-200"></i>
           </a>
           {% endfor %}
         </div>
         {% else %}
-        <button onclick="document.getElementById('createChannelModal').classList.remove('hidden')" class="w-full py-3 bg-[#1A237E] text-white rounded-xl font-bold flex items-center justify-center gap-2">
+        <button onclick="document.getElementById('createChannelModal').classList.remove('hidden')" class="w-full py-3 bg-shk-blue text-white rounded-xl font-bold flex items-center justify-center gap-2">
           <i data-lucide="plus" class="w-4 h-4"></i> Create Channel
         </button>
         {% endif %}
@@ -611,13 +611,13 @@ if (GROUP_ID) {
   container.scrollTop = container.scrollHeight;
 
   function send() {
-    const content = input.value.trim();
+    const rawContent = input.value;
+    const content = rawContent ? rawContent.trim() : "";
     if (!content && !pendingFile) return;
 
     if (!socket.connected) {
       console.warn('Socket not connected, attempting to reconnect...');
       socket.connect();
-      // We'll try to emit anyway, Socket.IO usually queues it.
     }
 
     const messageData = {
@@ -629,13 +629,23 @@ if (GROUP_ID) {
         file_name: pendingFile?.name
     };
 
-    console.log('Sending message:', messageData);
-    socket.emit('send_message', messageData);
+    try {
+      socket.emit('send_message', messageData);
 
-    input.value = '';
-    input.style.height = 'auto';
-    cancelReply();
-    clearFile();
+      // Clear input and state immediately for responsiveness
+      input.value = '';
+      input.style.height = 'auto';
+      cancelReply();
+      clearFile();
+
+      // Force input focus back for desktop
+      if (window.innerWidth > 1024) {
+        input.focus();
+      }
+    } catch (err) {
+      console.error('Failed to emit message:', err);
+      alert('Message could not be sent. Please check your connection.');
+    }
   }
 
   sendButton.addEventListener('click', (e) => {
