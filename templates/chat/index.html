@@ -542,13 +542,15 @@ async function loadMoreHistory() {
     const container = document.getElementById('message-container');
     const oldScrollHeight = container.scrollHeight;
     messages.forEach(msg => {
-      const wrap = document.createElement('div'); wrap.className = 'msg-block'; wrap.id = `msg-${msg.id}`;
+      const wrap = document.createElement('div');
+      wrap.className = 'msg-block';
+      wrap.id = `msg-${msg.id}`;
       wrap.innerHTML = buildMsgHTML(msg, false);
       wrapper.after(wrap);
+      lucide.createIcons({ props: {}, nameAttr: 'data-lucide', root: wrap });
     });
     messageOffset += messages.length; btn.disabled = false; btn.textContent = 'Load Earlier Messages';
     container.scrollTop = container.scrollHeight - oldScrollHeight;
-    lucide.createIcons();
   } catch(e) { btn.disabled = false; btn.textContent = 'Load Earlier Messages'; }
 }
 
@@ -647,10 +649,17 @@ if (GROUP_ID) {
       send();
     }
   });
-  input.oninput = function() {
-    this.style.height = 'auto'; this.style.height = Math.min(this.scrollHeight, 112)+'px';
-    socket.emit('typing', { group_id: GROUP_ID });
-  };
+  let lastTypingTime = 0;
+  input.addEventListener('input', function() {
+    this.style.height = 'auto';
+    this.style.height = Math.min(this.scrollHeight, 112)+'px';
+
+    const now = Date.now();
+    if (now - lastTypingTime > 2000) {
+      socket.emit('typing', { group_id: GROUP_ID });
+      lastTypingTime = now;
+    }
+  });
 
   socket.on('receive_message', function(data) {
     if (data.parent_id) {
@@ -662,14 +671,22 @@ if (GROUP_ID) {
           t.className = 'reply-thread mt-3 ml-4 pl-4 border-l-2 border-gray-100 space-y-3';
           (p.querySelector('.message-content') || p).appendChild(t);
         }
-        t.insertAdjacentHTML('beforeend', buildMsgHTML(data, true));
+        const replyHTML = buildMsgHTML(data, true);
+        const temp = document.createElement('div');
+        temp.innerHTML = replyHTML;
+        const newReply = temp.firstElementChild;
+        t.appendChild(newReply);
+        lucide.createIcons({ props: {}, nameAttr: 'data-lucide', root: newReply });
       }
     } else {
-      const w = document.createElement('div'); w.className = 'msg-block'; w.id = `msg-${data.id}`; w.innerHTML = buildMsgHTML(data, false);
+      const w = document.createElement('div');
+      w.className = 'msg-block';
+      w.id = `msg-${data.id}`;
+      w.innerHTML = buildMsgHTML(data, false);
       container.appendChild(w);
+      lucide.createIcons({ props: {}, nameAttr: 'data-lucide', root: w });
     }
     container.scrollTop = container.scrollHeight;
-    lucide.createIcons();
   });
 
   socket.on('user_typing', d => {

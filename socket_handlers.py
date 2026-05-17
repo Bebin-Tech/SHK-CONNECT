@@ -5,17 +5,17 @@ from datetime import datetime
 
 online_users = {}  # { user_id: { username, role } }
 
-def user_can_access_group(group):
-    if not current_user.is_authenticated or not group or group.is_archived:
+def user_can_access_group(group, user):
+    if not user.is_authenticated or not group or group.is_archived:
         return False
 
-    role = current_user.role
+    role = user.role
     role_name = role.name if role else 'Member'
     if role_name in ['Admin', 'Owner']:
         return True
 
     # Check if member or if their role is allowed
-    is_member = group.members.filter_by(id=current_user.id).first() is not None
+    is_member = group.members.filter_by(id=user.id).first() is not None
     role_allowed = False
     if role:
         role_allowed = group.roles.filter_by(id=role.id).first() is not None
@@ -31,6 +31,15 @@ def register_socket_handlers(socketio):
                 'username': current_user.username,
                 'role': current_user.role.name if current_user.role else 'Member'
             }
+            # Join rooms for all groups the user has access to
+            try:
+                all_groups = Group.query.filter_by(is_archived=False).all()
+                for group in all_groups:
+                    if user_can_access_group(group, current_user):
+                        join_room(str(group.id))
+            except Exception as e:
+                print(f"Error joining rooms on connect: {e}")
+
             emit('presence_update', {'online': list(online_users.values())}, broadcast=True)
 
     @socketio.on('disconnect')
@@ -54,7 +63,7 @@ def register_socket_handlers(socketio):
             return
 
         group = db.session.get(Group, group_id)
-        if not group or not user_can_access_group(group):
+        if not group or not user_can_access_group(group, current_user):
             return
 
         room_id = str(group_id)
@@ -89,7 +98,7 @@ def register_socket_handlers(socketio):
 
             group_id = int(group_id)
             group = db.session.get(Group, group_id)
-            if not group or not user_can_access_group(group):
+            if not group or not user_can_access_group(group, current_user):
                 emit('error', {'message': 'Access denied'})
                 return
 
