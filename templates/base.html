@@ -9,92 +9,86 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <script>
-        const socket = io({
-            transports: ['polling', 'websocket'],
-            reconnection: true,
-            reconnectionAttempts: 10,
-            reconnectionDelay: 1000,
-            reconnectionDelayMax: 5000,
-            timeout: 20000,
-            autoConnect: true
-        });
-
-        socket.on('connect', () => {
-            console.log('Socket connected successfully');
-        });
-
-        socket.on('connect_error', (error) => {
-            console.error('Socket connection error:', error);
-        });
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'shk-navy': '#0e1b42',
+                        'shk-blue': '#517ea2',
+                        'shk-red': '#a61a2e',
+                        'shk-gold': '#e1ad21',
+                        'shk-light': '#f8fafc'
+                    }
+                }
+            }
+        }
     </script>
     <style>
         html, body { height: 100%; }
-        body { font-family: 'Outfit', sans-serif; background-color: #F8F9FA; -webkit-tap-highlight-color: transparent; overscroll-behavior: none; }
+        body { font-family: 'Outfit', sans-serif; background-color: #f8fafc; -webkit-tap-highlight-color: transparent; overscroll-behavior: none; }
         .app-shell { height: 100vh; }
         @supports (height: 100dvh) {
             .app-shell { height: 100dvh; }
         }
-        .nav-link:hover { background: rgba(26, 35, 126, 0.05); color: #1A237E; }
-        .nav-link.active { background: #1A237E; color: white; }
-        .mobile-bottom-nav { box-shadow: 0 -4px 15px rgba(0,0,0,0.05); }
+        .nav-link:hover { background: rgba(81, 126, 162, 0.08); color: #517ea2; }
+        .nav-link.active { background: #517ea2; color: white; }
+        .mobile-bottom-nav { box-shadow: 0 -4px 15px rgba(0,0,0,0.03); }
         .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
-        /* Smooth Drawer Transition */
         #mobile-sidebar { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
         #mobile-overlay { transition: opacity 0.3s ease; }
     </style>
 </head>
-<body class="text-gray-900">
+<body class="text-slate-800">
     <div class="app-shell flex overflow-hidden relative">
         <!-- Mobile Sidebar Drawer (Overlay) -->
-        <div id="mobile-overlay" onclick="toggleMobileMenu()" class="fixed inset-0 bg-black/50 z-40 lg:hidden hidden opacity-0"></div>
+        <div id="mobile-overlay" onclick="toggleMobileMenu()" class="fixed inset-0 bg-slate-900/40 z-40 lg:hidden hidden opacity-0"></div>
         <aside id="mobile-sidebar" class="fixed inset-y-0 left-0 w-72 bg-white z-50 lg:hidden transform -translate-x-full shadow-2xl flex flex-col">
             <!-- Sidebar Content Copy (For Mobile) -->
-            <div class="px-6 pt-8 pb-6 flex items-center justify-between border-b">
+            <div class="px-6 pt-8 pb-6 flex items-center justify-between border-b border-slate-100">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10">
-                        <img src="{{ url_for('static', filename='img/shk_logo_new.png') }}" alt="Logo" class="w-full h-full object-contain">
+                        <img src="{{ url_for('static', filename='img/shk_logo.png') }}" alt="Logo" class="w-full h-full object-contain">
                     </div>
-                    <h1 class="text-xs font-black text-[#1A237E] uppercase tracking-tighter">SHK CONNECT</h1>
+                    <h1 class="text-xs font-black text-shk-navy uppercase tracking-tighter">SHK CONNECT</h1>
                 </div>
-                <button onclick="toggleMobileMenu()" class="p-2 text-gray-400"><i data-lucide="x"></i></button>
+                <button onclick="toggleMobileMenu()" class="p-2 text-slate-400"><i data-lucide="x"></i></button>
             </div>
             <div class="p-6 flex-1 overflow-y-auto">
-                <!-- Navigation links same as desktop... (will be extracted to macro or just kept for now) -->
                 {% set role = current_user.role.name if current_user.role else 'Member' %}
                 <nav class="space-y-4">
-                    <a href="/chat" class="flex items-center gap-3 p-4 rounded-2xl {% if '/chat' in request.path %}bg-blue-50 text-[#1A237E]{% endif %} font-bold">
+                    <a href="/chat" class="flex items-center gap-3 p-4 rounded-2xl {% if '/chat' in request.path %}bg-slate-50 text-shk-blue{% endif %} font-bold">
                         <i data-lucide="message-circle"></i> Team Chat
                     </a>
                     {% if role in ['Admin', 'Owner'] %}
-                    <a href="/admin/" class="flex items-center gap-3 p-4 rounded-2xl {% if request.path == '/admin/' %}bg-blue-50 text-[#1A237E]{% endif %} font-bold">
+                    <a href="/admin/" class="flex items-center gap-3 p-4 rounded-2xl {% if request.path == '/admin/' %}bg-slate-50 text-shk-blue{% endif %} font-bold">
                         <i data-lucide="layout-dashboard"></i> Admin Center
                     </a>
                     {% endif %}
-                    <a href="/admin/history" class="flex items-center gap-3 p-4 rounded-2xl {% if '/admin/history' in request.path %}bg-blue-50 text-[#1A237E]{% endif %} font-bold">
+                    <a href="/admin/history" class="flex items-center gap-3 p-4 rounded-2xl {% if '/admin/history' in request.path %}bg-slate-50 text-shk-blue{% endif %} font-bold">
                         <i data-lucide="archive"></i> History
                     </a>
                     {% if role == 'Admin' %}
-                    <a href="/admin/users" class="flex items-center gap-3 p-4 rounded-2xl {% if '/admin/users' in request.path %}bg-blue-50 text-[#1A237E]{% endif %} font-bold">
+                    <a href="/admin/users" class="flex items-center gap-3 p-4 rounded-2xl {% if '/admin/users' in request.path %}bg-slate-50 text-shk-blue{% endif %} font-bold">
                         <i data-lucide="users"></i> User Directory
                     </a>
                     {% endif %}
                 </nav>
             </div>
-            <div class="p-6 border-t">
+            <div class="p-6 border-t border-slate-100">
                 <a href="/logout" class="flex items-center gap-3 text-rose-500 font-bold"><i data-lucide="log-out"></i> Sign Out</a>
             </div>
         </aside>
 
         <!-- Desktop Sidebar -->
-        <aside class="w-72 bg-white border-r hidden lg:flex flex-col shadow-sm z-10">
+        <aside class="w-72 bg-white border-r border-slate-100 hidden lg:flex flex-col z-10">
             <!-- Logo & Brand Header -->
             <div class="px-6 pt-8 pb-6 flex items-center gap-3">
                 <div class="w-12 h-12 flex-shrink-0">
-                    <img src="{{ url_for('static', filename='img/shk_logo_new.png') }}" alt="Logo" class="w-full h-full object-contain">
+                    <img src="{{ url_for('static', filename='img/shk_logo.png') }}" alt="Logo" class="w-full h-full object-contain">
                 </div>
                 <div>
-                    <h1 class="text-[14px] font-black text-[#1A237E] uppercase tracking-tighter leading-tight">
-                        SHK <br><span class="text-[#D4AF37]">CONNECT</span>
+                    <h1 class="text-[14px] font-black text-shk-navy uppercase tracking-tighter leading-tight">
+                        SHK <br><span class="text-shk-gold">CONNECT</span>
                     </h1>
                 </div>
             </div>
@@ -103,46 +97,46 @@
             <div class="px-8 pb-4 flex justify-center">
                 {% set role = current_user.role.name if current_user.role else 'Member' %}
                 {% if role == 'Admin' %}
-                    <span class="text-[10px] font-bold uppercase tracking-widest bg-blue-100 text-blue-700 px-3 py-1 rounded-full">🛡 Admin</span>
+                    <span class="text-[10px] font-bold uppercase tracking-widest bg-blue-50 text-blue-600 px-3 py-1 rounded-full">🛡 Admin</span>
                 {% elif role == 'Owner' %}
-                    <span class="text-[10px] font-bold uppercase tracking-widest bg-purple-100 text-purple-700 px-3 py-1 rounded-full">👑 Owner</span>
+                    <span class="text-[10px] font-bold uppercase tracking-widest bg-purple-50 text-purple-600 px-3 py-1 rounded-full">👑 Owner</span>
                 {% elif role == 'ED' %}
-                    <span class="text-[10px] font-bold uppercase tracking-widest bg-rose-100 text-rose-700 px-3 py-1 rounded-full">👔 ED</span>
+                    <span class="text-[10px] font-bold uppercase tracking-widest bg-rose-50 text-rose-600 px-3 py-1 rounded-full">👔 ED</span>
                 {% elif role == 'Manager' %}
-                    <span class="text-[10px] font-bold uppercase tracking-widest bg-amber-100 text-amber-700 px-3 py-1 rounded-full">💼 Manager</span>
+                    <span class="text-[10px] font-bold uppercase tracking-widest bg-amber-50 text-amber-600 px-3 py-1 rounded-full">💼 Manager</span>
                 {% elif role == 'Accounts' %}
-                    <span class="text-[10px] font-bold uppercase tracking-widest bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full">🧾 Accounts</span>
+                    <span class="text-[10px] font-bold uppercase tracking-widest bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full">🧾 Accounts</span>
                 {% elif role == 'Staff' %}
-                    <span class="text-[10px] font-bold uppercase tracking-widest bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full">🛠 Staff</span>
+                    <span class="text-[10px] font-bold uppercase tracking-widest bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full">🛠 Staff</span>
                 {% else %}
-                    <span class="text-[10px] font-bold uppercase tracking-widest bg-gray-100 text-gray-500 px-3 py-1 rounded-full">👤 Member</span>
+                    <span class="text-[10px] font-bold uppercase tracking-widest bg-slate-100 text-slate-500 px-3 py-1 rounded-full">👤 Member</span>
                 {% endif %}
             </div>
 
             <!-- Navigation -->
             <div class="px-6 flex-1">
                 <nav class="space-y-1">
-                    <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 px-2">Navigation</p>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 px-2">Navigation</p>
 
                     <!-- Chat — ALL roles -->
                     <a href="/chat" class="nav-link flex items-center gap-3 p-4 rounded-2xl transition {% if '/chat' in request.path %}active{% endif %}">
                         <i data-lucide="message-circle" class="w-5 h-5"></i>
-                        <span class="font-semibold">Team Chat</span>
+                        <span class="font-semibold text-sm">Team Chat</span>
                     </a>
 
                     <!-- History — ALL roles (filtered by backend) -->
                     <a href="/admin/history" class="nav-link flex items-center gap-3 p-4 rounded-2xl transition {% if request.path == '/admin/history' %}active{% endif %}">
                         <i data-lucide="archive" class="w-5 h-5"></i>
-                        <span class="font-semibold">History</span>
+                        <span class="font-semibold text-sm">History</span>
                     </a>
 
                     {% if role == 'Admin' %}
                     <div class="pt-3">
-                        <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 px-2">Management</p>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">Management</p>
                         <!-- User Management — Admin only -->
                         <a href="/admin/users" class="nav-link flex items-center gap-3 p-4 rounded-2xl transition {% if request.path == '/admin/users' %}active{% endif %}">
                             <i data-lucide="users" class="w-5 h-5"></i>
-                            <span class="font-semibold">User Directory</span>
+                            <span class="font-semibold text-sm">User Directory</span>
                         </a>
                     </div>
                     {% endif %}
@@ -150,17 +144,17 @@
             </div>
 
             <!-- Footer -->
-            <div class="p-8 border-t">
+            <div class="p-8 border-t border-slate-100">
                 <div class="flex items-center gap-3 mb-4">
-                    <div class="w-9 h-9 bg-orange-100 text-orange-600 rounded-xl flex items-center justify-center font-bold text-sm flex-shrink-0">
+                    <div class="w-9 h-9 bg-slate-100 text-slate-600 rounded-xl flex items-center justify-center font-bold text-sm flex-shrink-0">
                         {{ current_user.username[0].upper() }}
                     </div>
                     <div class="overflow-hidden">
-                        <p class="text-sm font-bold text-gray-800 truncate">{{ current_user.username }}</p>
-                        <p class="text-[10px] text-gray-400 truncate">{{ current_user.email }}</p>
+                        <p class="text-sm font-bold text-shk-navy truncate">{{ current_user.username }}</p>
+                        <p class="text-[10px] text-slate-400 truncate">{{ current_user.email }}</p>
                     </div>
                 </div>
-                <a href="/logout" class="flex items-center gap-3 text-rose-500 hover:text-rose-700 transition font-semibold text-sm">
+                <a href="/logout" class="flex items-center gap-3 text-slate-400 hover:text-shk-red transition font-semibold text-sm">
                     <i data-lucide="log-out" class="w-4 h-4"></i>
                     <span>Sign Out</span>
                 </a>
@@ -171,50 +165,47 @@
         <!-- Main Content Area -->
         <div class="flex-1 flex flex-col min-w-0 overflow-hidden relative">
             <!-- Top Bar -->
-            <header class="h-16 lg:h-20 bg-white border-b flex items-center justify-between px-4 lg:px-10 flex-shrink-0">
+            <header class="h-16 lg:h-20 bg-white border-b border-slate-100 flex items-center justify-between px-4 lg:px-10 flex-shrink-0">
                 <div class="flex items-center gap-4">
                     <!-- Mobile Hamburger -->
-                    <button onclick="toggleMobileMenu()" class="lg:hidden p-2 text-gray-400 hover:bg-gray-50 rounded-xl transition">
+                    <button onclick="toggleMobileMenu()" class="lg:hidden p-2 text-slate-400 hover:bg-slate-50 rounded-xl transition">
                         <i data-lucide="menu"></i>
                     </button>
-                    <div class="bg-gray-100 p-2 rounded-xl hidden sm:block">
-                        <i data-lucide="search" class="w-5 h-5 text-gray-400"></i>
+                    <div class="bg-slate-50 p-2 rounded-xl hidden sm:block">
+                        <i data-lucide="search" class="w-5 h-5 text-slate-300"></i>
                     </div>
                     <input type="text" placeholder="Search..." class="hidden sm:block bg-transparent border-none outline-none text-sm w-32 sm:w-64">
                 </div>
                 
                 <div class="flex items-center gap-6">
                     <div class="relative">
-                        <button id="notification-bell" class="relative p-2 text-gray-400 hover:text-[#1A237E] transition-colors focus:outline-none">
+                        <button id="notification-bell" class="relative p-2 text-slate-300 hover:text-shk-blue transition-colors focus:outline-none">
                             <i data-lucide="bell" class="w-6 h-6"></i>
-                            <span id="notification-badge" class="absolute top-1 right-1 w-4 h-4 bg-orange-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full hidden">0</span>
+                            <span id="notification-badge" class="absolute top-1 right-1 w-4 h-4 bg-shk-red text-white text-[10px] font-bold flex items-center justify-center rounded-full hidden">0</span>
                         </button>
                         
                         <!-- Notification Dropdown -->
-                        <div id="notification-dropdown" class="absolute right-0 mt-3 w-80 bg-white rounded-2xl shadow-2xl border border-gray-100 hidden z-50 overflow-hidden transform transition-all scale-95 opacity-0 origin-top-right">
-                            <div class="p-4 border-b flex items-center justify-between bg-gray-50/50">
-                                <h3 class="text-sm font-bold text-[#1A237E]">Notifications</h3>
-                                <button id="clear-notifications" class="text-[10px] font-bold text-gray-400 hover:text-rose-500 uppercase tracking-tighter transition-colors">Clear All</button>
+                        <div id="notification-dropdown" class="absolute right-0 mt-3 w-80 bg-white rounded-2xl shadow-2xl border border-slate-100 hidden z-50 overflow-hidden transform transition-all scale-95 opacity-0 origin-top-right">
+                            <div class="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                                <h3 class="text-sm font-bold text-shk-navy">Notifications</h3>
+                                <button id="clear-notifications" class="text-[10px] font-bold text-slate-400 hover:text-shk-red uppercase tracking-tighter transition-colors">Clear All</button>
                             </div>
                             <div id="notification-list" class="max-h-96 overflow-y-auto py-2">
                                 <div id="no-notifications" class="p-8 text-center">
-                                    <div class="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-3">
-                                        <i data-lucide="bell-off" class="w-6 h-6 text-gray-300"></i>
+                                    <div class="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-3">
+                                        <i data-lucide="bell-off" class="w-6 h-6 text-slate-200"></i>
                                     </div>
-                                    <p class="text-xs text-gray-400 font-medium">No new notifications</p>
+                                    <p class="text-xs text-slate-400 font-medium">No new notifications</p>
                                 </div>
-                            </div>
-                            <div class="p-3 border-t bg-gray-50/50 text-center">
-                                <button class="text-[10px] font-bold text-[#1A237E] uppercase tracking-widest hover:underline">View All Activity</button>
                             </div>
                         </div>
                     </div>
-                    <div class="hidden sm:flex items-center gap-3 pl-6 border-l">
+                    <div class="hidden sm:flex items-center gap-3 pl-6 border-l border-slate-100">
                         <div class="text-right">
-                            <p class="text-sm font-bold text-[#1A237E]">{{ current_user.username }}</p>
-                            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">{{ current_user.role.name if current_user.role else 'Employee' }}</p>
+                            <p class="text-sm font-bold text-shk-navy">{{ current_user.username }}</p>
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{{ current_user.role.name if current_user.role else 'Employee' }}</p>
                         </div>
-                        <div class="w-10 h-10 bg-orange-100 text-orange-600 rounded-xl flex items-center justify-center font-bold">
+                        <div class="w-10 h-10 bg-slate-100 text-slate-600 rounded-xl flex items-center justify-center font-bold">
                             {{ current_user.username[0].upper() }}
                         </div>
                     </div>
@@ -222,7 +213,7 @@
             </header>
 
             <!-- Page Content -->
-            <main class="flex-1 min-h-0 overflow-y-auto p-4 lg:p-10 bg-[#F8F9FA] pb-24 lg:pb-10">
+            <main class="flex-1 min-h-0 overflow-y-auto p-4 lg:p-10 bg-[#f8fafc] pb-24 lg:pb-10">
                 <!-- Flash Messages -->
                 {% with messages = get_flashed_messages(with_categories=true) %}
                   {% if messages %}
@@ -239,29 +230,29 @@
             </main>
 
             <!-- Mobile Bottom Navigation -->
-            <nav class="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t min-h-20 px-6 flex items-center justify-between mobile-bottom-nav safe-bottom z-30">
-                <a href="/chat" class="flex flex-col items-center gap-1 {% if '/chat' in request.path %}text-[#1A237E]{% else %}text-gray-400{% endif %}">
+            <nav class="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 min-h-20 px-6 flex items-center justify-between mobile-bottom-nav safe-bottom z-30">
+                <a href="/chat" class="flex flex-col items-center gap-1 {% if '/chat' in request.path %}text-shk-blue{% else %}text-slate-300{% endif %}">
                     <i data-lucide="message-circle" class="w-6 h-6"></i>
                     <span class="text-[10px] font-bold uppercase tracking-widest">Chat</span>
                 </a>
                 {% set role = current_user.role.name if current_user.role else 'Member' %}
                 {% if role in ['Admin', 'Owner'] %}
-                <a href="/admin/" class="flex flex-col items-center gap-1 {% if request.path == '/admin/' %}text-[#1A237E]{% else %}text-gray-400{% endif %}">
+                <a href="/admin/" class="flex flex-col items-center gap-1 {% if request.path == '/admin/' %}text-shk-blue{% else %}text-slate-300{% endif %}">
                     <i data-lucide="layout-dashboard" class="w-6 h-6"></i>
                     <span class="text-[10px] font-bold uppercase tracking-widest">Admin</span>
                 </a>
                 {% endif %}
                 {% if role == 'Admin' %}
-                <a href="/admin/users" class="flex flex-col items-center gap-1 {% if '/admin/users' in request.path %}text-[#1A237E]{% else %}text-gray-400{% endif %}">
+                <a href="/admin/users" class="flex flex-col items-center gap-1 {% if '/admin/users' in request.path %}text-shk-blue{% else %}text-slate-300{% endif %}">
                     <i data-lucide="users" class="w-6 h-6"></i>
                     <span class="text-[10px] font-bold uppercase tracking-widest">Users</span>
                 </a>
                 {% endif %}
-                <a href="/admin/history" class="flex flex-col items-center gap-1 {% if '/admin/history' in request.path %}text-[#1A237E]{% else %}text-gray-400{% endif %}">
+                <a href="/admin/history" class="flex flex-col items-center gap-1 {% if '/admin/history' in request.path %}text-shk-blue{% else %}text-slate-300{% endif %}">
                     <i data-lucide="archive" class="w-6 h-6"></i>
                     <span class="text-[10px] font-bold uppercase tracking-widest">History</span>
                 </a>
-                <a href="/logout" class="flex flex-col items-center gap-1 text-rose-400">
+                <a href="/logout" class="flex flex-col items-center gap-1 text-slate-300">
                     <i data-lucide="log-out" class="w-6 h-6"></i>
                     <span class="text-[10px] font-bold uppercase tracking-widest">Exit</span>
                 </a>
