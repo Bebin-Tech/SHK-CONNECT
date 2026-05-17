@@ -3,6 +3,7 @@ from flask_login import login_required, current_user
 from models import db, User, Role, Group, Message, ActivityLog, SupportTicket
 from functools import wraps
 from datetime import datetime
+from extensions import socketio
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -212,6 +213,7 @@ def archive_group(group_id):
     group = Group.query.get_or_404(group_id)
     group.is_archived = True
     db.session.commit()
+    socketio.emit('refresh_channels', {'id': group_id, 'action': 'archive'}, namespace='/')
     flash(f'Channel "{group.name}" moved to History.', 'info')
     return redirect(url_for('admin.index'))
 
@@ -221,10 +223,12 @@ def archive_group(group_id):
 def delete_group(group_id):
     group = Group.query.get_or_404(group_id)
     is_history = group.is_archived
+    name = group.name
     group.members = []
     db.session.delete(group)
     db.session.commit()
-    flash(f'Channel "{group.name}" permanently removed.', 'warning')
+    socketio.emit('refresh_channels', {'id': group_id, 'action': 'delete'}, namespace='/')
+    flash(f'Channel "{name}" permanently removed.', 'warning')
     
     if is_history:
         return redirect(url_for('admin.history'))

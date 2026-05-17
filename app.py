@@ -10,7 +10,6 @@ except (ImportError, AttributeError):
     print("Warning: Eventlet monkey patching failed or skipped.")
 
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
-from flask_socketio import SocketIO
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_migrate import Migrate
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -20,6 +19,7 @@ from admin_routes import admin_bp
 from chat_routes import chat_bp
 from socket_handlers import register_socket_handlers
 from dotenv import load_dotenv
+from extensions import socketio
 
 load_dotenv()
 
@@ -64,13 +64,15 @@ app.config['SESSION_COOKIE_SAMESITE'] = os.getenv('SESSION_COOKIE_SAMESITE', 'La
 
 db.init_app(app)
 migrate = Migrate(app, db)
-socketio = SocketIO(
+
+socketio.init_app(
     app,
     cors_allowed_origins=os.getenv('SOCKETIO_CORS_ORIGINS', '*'),
     async_mode=socketio_async_mode(),
     ping_timeout=int(os.getenv('SOCKETIO_PING_TIMEOUT', 60)),
     ping_interval=int(os.getenv('SOCKETIO_PING_INTERVAL', 25)),
 )
+
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 

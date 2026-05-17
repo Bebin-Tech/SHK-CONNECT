@@ -694,6 +694,17 @@ if (GROUP_ID) {
     el.textContent = `${d.username} is typing...`; el.classList.remove('hidden');
     clearTimeout(tmo); tmo = setTimeout(() => el.classList.add('hidden'), 3000);
   });
+
+  socket.on('refresh_channels', (data) => {
+    // If the currently open channel was deleted or archived, redirect to home
+    if (GROUP_ID === data.id && (data.action === 'delete' || data.action === 'archive')) {
+      window.location.href = '/chat';
+    } else {
+      // Otherwise, just reload the page to refresh the sidebar
+      // A more surgical approach would be to update the DOM, but reloading is safest to ensure permissions
+      window.location.reload();
+    }
+  });
 }
 </script>
 {% endblock %}

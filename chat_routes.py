@@ -5,6 +5,7 @@ from flask_login import login_required, current_user
 from models import db, Message, Group, Role
 from werkzeug.utils import secure_filename
 from sqlalchemy import or_
+from extensions import socketio
 
 chat_bp = Blueprint('chat', __name__)
 
@@ -226,6 +227,7 @@ def create_group():
         group.members.append(current_user)
         db.session.add(group)
         db.session.commit()
+        socketio.emit('refresh_channels', {'id': group.id, 'action': 'create'}, namespace='/')
         return jsonify({'success': True, 'id': group.id, 'name': group.name})
     return jsonify({'error': 'Name is required'}), 400
 
@@ -239,6 +241,7 @@ def archive_group(group_id):
     group = Group.query.get_or_404(group_id)
     group.is_archived = True
     db.session.commit()
+    socketio.emit('refresh_channels', {'id': group_id, 'action': 'archive'}, namespace='/')
     return jsonify({'success': True})
 
 @chat_bp.route('/search')
