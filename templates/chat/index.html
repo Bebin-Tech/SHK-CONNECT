@@ -613,12 +613,18 @@ if (GROUP_ID) {
   function send() {
     const rawContent = input.value;
     const content = rawContent ? rawContent.trim() : "";
+
+    // Don't send if both are empty
     if (!content && !pendingFile) return;
 
     if (!socket.connected) {
-      console.warn('Socket not connected, attempting to reconnect...');
+      console.warn('Socket not connected. Messages will be queued.');
       socket.connect();
     }
+
+    // Visual feedback: disable button
+    sendButton.disabled = true;
+    sendButton.classList.add('opacity-50', 'cursor-not-allowed');
 
     const messageData = {
         group_id: GROUP_ID,
@@ -629,24 +635,35 @@ if (GROUP_ID) {
         file_name: pendingFile?.name
     };
 
-    try {
+    console.log('Sending message to Group', GROUP_ID);
+
+    // We wrap in a timeout to ensure UI feels responsive even if emit is slow
+    setTimeout(() => {
       socket.emit('send_message', messageData);
 
-      // Clear input and state immediately for responsiveness
+      // Clear input and state
       input.value = '';
       input.style.height = 'auto';
       cancelReply();
       clearFile();
 
-      // Force input focus back for desktop
+      // Re-enable button
+      sendButton.disabled = false;
+      sendButton.classList.remove('opacity-50', 'cursor-not-allowed');
+
       if (window.innerWidth > 1024) {
         input.focus();
       }
-    } catch (err) {
-      console.error('Failed to emit message:', err);
-      alert('Message could not be sent. Please check your connection.');
-    }
+    }, 10);
   }
+
+  // Handle server-side errors
+  socket.on('error', (data) => {
+    console.error('Socket Error:', data.message);
+    alert('Error: ' + data.message);
+    sendButton.disabled = false;
+    sendButton.classList.remove('opacity-50', 'cursor-not-allowed');
+  });
 
   sendButton.addEventListener('click', (e) => {
     e.preventDefault();
