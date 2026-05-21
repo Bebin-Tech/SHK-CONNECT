@@ -11,34 +11,44 @@ def user_can_access_group(group, user):
 
     role = user.role
     role_name = role.name if role else 'Member'
+
+    # Admins and Owners always have access
     if role_name in ['Admin', 'Owner']:
         return True
 
-    # Check if member or if their role is allowed
+    # Check if user is a direct member
+    # group.members is dynamic, so we can use filter_by
     is_member = group.members.filter_by(id=user.id).first() is not None
-    role_allowed = False
-    if role:
-        role_allowed = group.roles.filter_by(id=role.id).first() is not None
+    if is_member:
+        return True
 
-    return is_member or role_allowed
+    # Check if user's role is allowed in this group
+    # group.roles is a standard list relationship
+    if role and role in group.roles:
+        return True
+
+    return False
 
 def register_socket_handlers(socketio):
 
     @socketio.on('connect')
     def handle_connect():
         if current_user.is_authenticated:
-            online_users[current_user.id] = {
+            user_id = current_user.id
+            online_users[user_id] = {
                 'username': current_user.username,
                 'role': current_user.role.name if current_user.role else 'Member'
             }
+
             # Join rooms for all groups the user has access to
             try:
-                all_groups = Group.query.filter_by(is_archived=False).all()
-                for group in all_groups:
+                # Use a join or efficient query if possible, but for now:
+                active_groups = Group.query.filter_by(is_archived=False).all()
+                for group in active_groups:
                     if user_can_access_group(group, current_user):
                         join_room(str(group.id))
             except Exception as e:
-                print(f"Error joining rooms on connect: {e}")
+                print(f"Socket connect room join error: {e}")
 
             emit('presence_update', {'online': list(online_users.values())}, broadcast=True)
 
@@ -53,28 +63,17 @@ def register_socket_handlers(socketio):
         if not current_user.is_authenticated:
             return
 
-        raw_group_id = data.get('group_id')
-        if not raw_group_id:
+        raw_id = data.get('group_id')
+        if not raw_id:
             return
 
         try:
-            group_id = int(raw_group_id)
-        except (TypeError, ValueError):
-            return
-
-        group = db.session.get(Group, group_id)
-        if not group or not user_can_access_group(group, current_user):
-            return
-
-        room_id = str(group_id)
-        join_room(room_id)
-        emit('new_notification', {
-            'type': 'join',
-            'username': current_user.username,
-            'group_id': group_id,
-            'group_name': group.name,
-            'timestamp': datetime.utcnow().strftime('%I:%M %p')
-        }, room=room_id, include_self=False)
+            group_id = int(raw_id)
+            group = db.session.get(Group, group_id)
+            if group and user_can_access_group(group, current_user):
+                join_room(str(group_id))
+        except Exception:
+            pass
 
     @socketio.on('send_message')
     def handle_message(data):
@@ -83,22 +82,27 @@ def register_socket_handlers(socketio):
             return
 
         try:
-            group_id  = data.get('group_id')
-            content   = (data.get('content') or '').strip()
-            parent_id = data.get('parent_id')
-            file_url  = data.get('file_url')
-            file_type = data.get('file_type', 'file')
-            file_name = data.get('file_name', '')
-            msg_type  = 'file' if file_url else 'text'
+            group_id_raw = data.get('group_id')
+            content      = (data.get('content') or '').strip()
+            parent_id    = data.get('parent_id')
+            file_url     = data.get('file_url')
+            file_type    = data.get('file_type', 'file')
+            file_name    = data.get('file_name', '')
+            msg_type     = 'file' if file_url else 'text'
 
             if not content and not file_url:
                 return
-            if not group_id:
+            if not group_id_raw:
                 return
 
-            group_id = int(group_id)
+            group_id = int(group_id_raw)
             group = db.session.get(Group, group_id)
-            if not group or not user_can_access_group(group, current_user):
+
+            if not group:
+                emit('error', {'message': 'Channel not found'})
+                return
+
+            if not user_can_access_group(group, current_user):
                 emit('error', {'message': 'Access denied'})
                 return
 
@@ -140,9 +144,10 @@ def register_socket_handlers(socketio):
                 'reply_preview': reply_preview
             }
 
+            # Emit to the specific group room
             emit('receive_message', output, room=str(group_id))
 
-            # Also emit a notification for everyone in the group (excluding sender)
+            # Send notification to everyone in the room except the sender
             emit('new_notification', {
                 'type': 'message',
                 'username': current_user.username,
@@ -151,14 +156,16 @@ def register_socket_handlers(socketio):
                 'group_name': group.name,
                 'timestamp': output['timestamp']
             }, room=str(group_id), include_self=False)
+
         except Exception as e:
-            print(f"Error handling message: {e}")
-            emit('error', {'message': str(e)})
+            print(f"Message handling error: {e}")
+            db.session.rollback()
+            emit('error', {'message': 'Server error. Please try again.'})
 
     @socketio.on('typing')
     def handle_typing(data):
         if not current_user.is_authenticated:
             return
-        group_id = str(data.get('group_id', ''))
+        group_id = data.get('group_id')
         if group_id:
-            emit('user_typing', {'username': current_user.username}, room=group_id, include_self=False)
+            emit('user_typing', {'username': current_user.username}, room=str(group_id), include_self=False)
