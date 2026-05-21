@@ -270,7 +270,7 @@ def history():
         groups = Group.query.filter_by(is_archived=True).order_by(Group.created_at.desc()).all()
     else:
         groups = Group.query.filter(Group.is_archived == True).filter(
-            Group.members.any(id=current_user.id)
+            Group.members.any(User.id == current_user.id)
         ).order_by(Group.created_at.desc()).all()
     return render_template('admin/history.html', title='Archived History', groups=groups)
 
@@ -282,7 +282,7 @@ def get_history_groups():
         groups = Group.query.filter_by(is_archived=True).all()
     else:
         groups = Group.query.filter(Group.is_archived == True).filter(
-            Group.members.any(id=current_user.id)
+            Group.members.any(User.id == current_user.id)
         ).all()
     
     return jsonify([{
@@ -295,44 +295,18 @@ def get_history_groups():
 
 @admin_bp.route('/history_groups/<int:group_id>')
 @login_required
-def get_history_detail(group_id):
+def history_detail(group_id):
     group = Group.query.get_or_404(group_id)
     role_name = current_user.role.name if current_user.role else 'Member'
-    if role_name == 'Member' and current_user not in group.members:
-        return jsonify({'error': 'Access denied'}), 403
+
+    # Security check: Admins/Owners see all, others only their own
+    if role_name not in ['Admin', 'Owner'] and current_user not in group.members:
+        flash('Access denied.', 'danger')
+        return redirect(url_for('admin.history'))
         
-    messages = []
-    for msg in group.messages:
-        if not msg.parent_id:
-            msg_role = msg.author.role.name if msg.author and msg.author.role else 'Member'
-            replies = []
-            for rep in msg.replies:
-                rep_role = rep.author.role.name if rep.author and rep.author.role else 'Member'
-                replies.append({
-                    'id': rep.id,
-                    'content': rep.content,
-                    'username': rep.author.username if rep.author else 'Unknown',
-                    'role': rep_role,
-                    'timestamp': rep.timestamp.strftime('%I:%M %p')
-                })
-            
-            messages.append({
-                'id': msg.id,
-                'content': msg.content,
-                'username': msg.author.username if msg.author else 'Unknown',
-                'role': msg_role,
-                'timestamp': msg.timestamp.strftime('%d %b %Y, %I:%M %p'),
-                'message_type': msg.message_type,
-                'file_url': msg.file_url,
-                'replies': replies
-            })
-            
-    return jsonify({
-        'id': group.id,
-        'name': group.name,
-        'description': group.description,
-        'messages': messages
-    })
+    return render_template('admin/history_detail.html',
+                           title=f"History: {group.name}",
+                           group=group)
 
 # ─── Support Tickets ──────────────────────────────────────────────────────────
 
