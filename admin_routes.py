@@ -203,7 +203,27 @@ def create_group():
         group.members.append(current_user)
         db.session.add(group)
         db.session.commit()
+        socketio.emit('refresh_channels', {'id': group.id, 'action': 'create'}, namespace='/')
         flash(f'Group "{name}" created. Invite code: {invite_code}', 'success')
+    return redirect(url_for('admin.index'))
+
+@admin_bp.route('/groups/<int:group_id>/edit', methods=['POST'])
+@login_required
+@admin_or_owner_required
+def edit_group_metadata(group_id):
+    group = Group.query.get_or_404(group_id)
+    name = (request.form.get('name') or '').strip()
+    desc = (request.form.get('description') or '').strip()
+
+    if not name:
+        flash('Channel name is required.', 'danger')
+        return redirect(url_for('admin.index'))
+
+    group.name = name
+    group.description = desc
+    db.session.commit()
+    socketio.emit('refresh_channels', {'id': group_id, 'action': 'update'}, namespace='/')
+    flash(f'Channel "{name}" updated successfully.', 'success')
     return redirect(url_for('admin.index'))
 
 @admin_bp.route('/groups/<int:group_id>/archive')
