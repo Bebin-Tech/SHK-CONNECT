@@ -87,7 +87,18 @@
                 </nav>
             </div>
             <div class="p-6 border-t border-slate-100">
-                <a href="/logout" class="flex items-center gap-3 text-rose-500 font-bold"><i data-lucide="log-out"></i> Sign Out</a>
+                <div class="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-shk-blue text-white rounded-xl flex items-center justify-center font-bold text-sm">
+                            {{ current_user.username[0].upper() }}
+                        </div>
+                        <div>
+                            <p class="text-sm font-bold text-shk-navy">{{ current_user.username }}</p>
+                            <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{{ current_user.role.name if current_user.role else 'Member' }}</p>
+                        </div>
+                    </div>
+                    <a href="/logout" class="p-2 text-rose-500 bg-rose-50 rounded-lg font-bold"><i data-lucide="log-out" class="w-5 h-5"></i></a>
+                </div>
             </div>
         </aside>
 
@@ -155,21 +166,24 @@
                 </nav>
             </div>
 
-            <!-- Footer -->
-            <div class="p-8 border-t border-slate-100">
-                <div class="flex items-center gap-3 mb-4">
-                    <div class="w-9 h-9 bg-slate-100 text-slate-600 rounded-xl flex items-center justify-center font-bold text-sm flex-shrink-0">
-                        {{ current_user.username[0].upper() }}
+            <!-- Footer Profile & Logout -->
+            <div class="p-6 border-t border-slate-100 mt-auto">
+                <div class="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-100 group transition-all duration-300">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="w-10 h-10 bg-shk-blue text-white rounded-xl flex items-center justify-center font-bold text-sm flex-shrink-0 shadow-sm shadow-shk-blue/20">
+                            {{ current_user.username[0].upper() }}
+                        </div>
+                        <div class="overflow-hidden">
+                            <p class="text-sm font-bold text-shk-navy truncate">{{ current_user.username }}</p>
+                            <p class="text-[10px] text-slate-400 truncate uppercase tracking-widest font-bold">{{ current_user.role.name if current_user.role else 'Member' }}</p>
+                        </div>
                     </div>
-                    <div class="overflow-hidden">
-                        <p class="text-sm font-bold text-shk-navy truncate">{{ current_user.username }}</p>
-                        <p class="text-[10px] text-slate-400 truncate">{{ current_user.email }}</p>
-                    </div>
+                    <a href="/logout"
+                       class="p-2 text-slate-400 hover:text-shk-red hover:bg-rose-50 rounded-lg transition-all duration-200 flex-shrink-0"
+                       title="Sign Out">
+                        <i data-lucide="log-out" class="w-4 h-4"></i>
+                    </a>
                 </div>
-                <a href="/logout" class="flex items-center gap-3 text-slate-400 hover:text-shk-red transition font-semibold text-sm">
-                    <i data-lucide="log-out" class="w-4 h-4"></i>
-                    <span>Sign Out</span>
-                </a>
             </div>
         </aside>
 
