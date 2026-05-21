@@ -9,6 +9,18 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <script>
+        const socket = io({
+            transports: ['polling', 'websocket'],
+            reconnection: true,
+            reconnectionAttempts: 10,
+            reconnectionDelay: 1000,
+            autoConnect: true
+        });
+
+        socket.on('connect', () => { console.log('Connected to server'); });
+        socket.on('connect_error', (err) => { console.error('Connection error:', err); });
+    </script>
+    <script>
         tailwind.config = {
             theme: {
                 extend: {
