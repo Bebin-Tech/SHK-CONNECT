@@ -242,24 +242,37 @@ def archive_group(group_id):
 @admin_or_owner_required
 def delete_group(group_id):
     group = Group.query.get_or_404(group_id)
-    is_history = group.is_archived
     name = group.name
-    group.members = []
-    db.session.delete(group)
-    db.session.commit()
-    socketio.emit('refresh_channels', {'id': group_id, 'action': 'delete'}, namespace='/')
-    flash(f'Channel "{name}" permanently removed.', 'warning')
-    
-    if is_history:
+
+    # Instead of deleting, we move it to History (Archive)
+    if not group.is_archived:
+        group.is_archived = True
+        db.session.commit()
+        socketio.emit('refresh_channels', {'id': group_id, 'action': 'archive'}, namespace='/')
+        flash(f'Channel "{name}" moved to History.', 'info')
+        return redirect(url_for('admin.index'))
+    else:
+        # If it's already in History, then we permanently remove it
+        group.members = []
+        db.session.delete(group)
+        db.session.commit()
+        socketio.emit('refresh_channels', {'id': group_id, 'action': 'delete'}, namespace='/')
+        flash(f'Channel "{name}" permanently removed from History.', 'warning')
         return redirect(url_for('admin.history'))
-    return redirect(url_for('admin.index'))
 
 # ─── History (All roles) ──────────────────────────────────────────────────────
 
 @admin_bp.route('/history')
 @login_required
 def history():
-    return render_template('admin/history.html', title='Archived History')
+    role_name = current_user.role.name if current_user.role else 'Member'
+    if role_name in ['Admin', 'Owner']:
+        groups = Group.query.filter_by(is_archived=True).order_by(Group.created_at.desc()).all()
+    else:
+        groups = Group.query.filter(Group.is_archived == True).filter(
+            Group.members.any(id=current_user.id)
+        ).order_by(Group.created_at.desc()).all()
+    return render_template('admin/history.html', title='Archived History', groups=groups)
 
 @admin_bp.route('/history_groups')
 @login_required

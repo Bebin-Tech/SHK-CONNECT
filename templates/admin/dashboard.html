@@ -59,11 +59,8 @@
                         <button onclick="copyToClipboard('{{ request.host_url }}auth/invite/{{ group.invite_code }}')" class="p-2 bg-green-100 text-green-600 rounded-lg hover:bg-green-200 transition flex items-center justify-center" title="Copy Invite Link">
                             <i data-lucide="link" class="w-4 h-4"></i>
                         </button>
-                        <a href="{{ url_for('admin.archive_group', group_id=group.id) }}" class="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition flex items-center justify-center" title="Move to History">
+                        <a href="{{ url_for('admin.delete_group', group_id=group.id) }}" onclick="return confirm('Move this channel to History?')" class="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition flex items-center justify-center" title="Move to History">
                             <i data-lucide="archive" class="w-4 h-4"></i>
-                        </a>
-                        <a href="{{ url_for('admin.delete_group', group_id=group.id) }}" onclick="return confirm('Permanently delete this channel?')" class="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition flex items-center justify-center" title="Delete Permanently">
-                            <i data-lucide="trash-2" class="w-4 h-4"></i>
                         </a>
                     </div>
                 </div>
