@@ -215,14 +215,14 @@
     <div id="typing-indicator" class="px-5 py-1 text-[10px] italic text-slate-400 hidden bg-white"></div>
     <footer class="p-3 sm:p-4 bg-white border-t border-slate-100 flex-shrink-0">
       <div class="flex items-end gap-2 bg-slate-50 border border-slate-200 rounded-2xl px-3 py-2 focus-within:border-shk-blue focus-within:bg-white transition-all shadow-sm">
-        <button onclick="document.getElementById('file-input').click()"
+        <button type="button" onclick="document.getElementById('file-input').click()"
                 class="p-1.5 hover:bg-slate-200 rounded-lg transition text-slate-400 hover:text-shk-blue flex-shrink-0" title="Attach file">
           <i data-lucide="paperclip" class="w-4 h-4"></i>
         </button>
         <input type="file" id="file-input" class="hidden" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.mp4,.webm">
         <textarea id="message-input" rows="1" placeholder="Type your message..."
                   class="flex-1 bg-transparent outline-none text-sm py-1 resize-none max-h-28 text-slate-700 placeholder:text-slate-400"></textarea>
-        <button id="send-button" class="p-2.5 bg-shk-blue text-white rounded-xl hover:bg-shk-navy transition-all flex-shrink-0 shadow-md active:scale-95">
+        <button type="button" id="send-button" class="p-2.5 bg-shk-blue text-white rounded-xl hover:bg-shk-navy transition-all flex-shrink-0 shadow-md active:scale-95">
           <i data-lucide="send" class="w-4 h-4"></i>
         </button>
       </div>
@@ -594,7 +594,7 @@ function buildMsgHTML(data, isReply=false) {
   </div>`;
 }
 
-// ── Socket ──────────────────────────────────────────
+// ── Socket & Messaging Logic ────────────────────────
 if (GROUP_ID) {
   const input = document.getElementById('message-input');
   const container = document.getElementById('message-container');
@@ -602,6 +602,7 @@ if (GROUP_ID) {
   let tmo;
 
   function joinCurrentChannel() {
+    console.log('Joining channel:', GROUP_ID);
     socket.emit('join', { group_id: GROUP_ID });
   }
 
@@ -610,21 +611,15 @@ if (GROUP_ID) {
   socket.on('reconnect', joinCurrentChannel);
   container.scrollTop = container.scrollHeight;
 
+  // Primary Send Function
   function send() {
-    const rawContent = input.value;
-    const content = rawContent ? rawContent.trim() : "";
-
-    // Don't send if both are empty
+    const content = input.value.trim();
     if (!content && !pendingFile) return;
 
     if (!socket.connected) {
-      console.warn('Socket not connected. Messages will be queued.');
+      console.warn('Socket not connected. Connecting...');
       socket.connect();
     }
-
-    // Visual feedback: disable button
-    sendButton.disabled = true;
-    sendButton.classList.add('opacity-50', 'cursor-not-allowed');
 
     const messageData = {
         group_id: GROUP_ID,
@@ -635,51 +630,37 @@ if (GROUP_ID) {
         file_name: pendingFile?.name
     };
 
-    console.log('Sending message to Group', GROUP_ID);
+    socket.emit('send_message', messageData);
 
-    // We wrap in a timeout to ensure UI feels responsive even if emit is slow
-    setTimeout(() => {
-      socket.emit('send_message', messageData);
+    // Reset UI Immediately
+    input.value = '';
+    input.style.height = 'auto';
+    cancelReply();
+    clearFile();
 
-      // Clear input and state
-      input.value = '';
-      input.style.height = 'auto';
-      cancelReply();
-      clearFile();
-
-      // Re-enable button
-      sendButton.disabled = false;
-      sendButton.classList.remove('opacity-50', 'cursor-not-allowed');
-
-      if (window.innerWidth > 1024) {
-        input.focus();
-      }
-    }, 10);
+    // Maintain focus on desktop
+    if (window.innerWidth > 1024) {
+      input.focus();
+    }
   }
 
-  // Handle server-side errors
-  socket.on('error', (data) => {
-    console.error('Socket Error:', data.message);
-    alert('Error: ' + data.message);
-    sendButton.disabled = false;
-    sendButton.classList.remove('opacity-50', 'cursor-not-allowed');
-  });
-
+  // Event Listeners
   sendButton.addEventListener('click', (e) => {
     e.preventDefault();
     send();
   });
 
   input.addEventListener('keydown', (e) => {
-    if ((e.key === 'Enter' || e.keyCode === 13) && !e.shiftKey) {
-      e.preventDefault();
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault(); // Stop newline from being added
       send();
     }
   });
+
   let lastTypingTime = 0;
   input.addEventListener('input', function() {
     this.style.height = 'auto';
-    this.style.height = Math.min(this.scrollHeight, 112)+'px';
+    this.style.height = Math.min(this.scrollHeight, 112) + 'px';
 
     const now = Date.now();
     if (now - lastTypingTime > 2000) {
@@ -688,22 +669,20 @@ if (GROUP_ID) {
     }
   });
 
+  // Socket Receivers
   socket.on('receive_message', function(data) {
+    console.log('New message received:', data);
     if (data.parent_id) {
       const p = document.getElementById(`msg-${data.parent_id}`);
       if (p) {
         let t = p.querySelector('.reply-thread');
         if (!t) {
           t = document.createElement('div');
-          t.className = 'reply-thread mt-3 ml-4 pl-4 border-l-2 border-gray-100 space-y-3';
+          t.className = 'reply-thread mt-3 ml-4 pl-4 border-l-2 border-slate-100 space-y-3';
           (p.querySelector('.message-content') || p).appendChild(t);
         }
-        const replyHTML = buildMsgHTML(data, true);
-        const temp = document.createElement('div');
-        temp.innerHTML = replyHTML;
-        const newReply = temp.firstElementChild;
-        t.appendChild(newReply);
-        lucide.createIcons({ props: {}, nameAttr: 'data-lucide', root: newReply });
+        t.insertAdjacentHTML('beforeend', buildMsgHTML(data, true));
+        lucide.createIcons();
       }
     } else {
       const w = document.createElement('div');
@@ -711,24 +690,30 @@ if (GROUP_ID) {
       w.id = `msg-${data.id}`;
       w.innerHTML = buildMsgHTML(data, false);
       container.appendChild(w);
-      lucide.createIcons({ props: {}, nameAttr: 'data-lucide', root: w });
+      lucide.createIcons();
     }
     container.scrollTop = container.scrollHeight;
   });
 
   socket.on('user_typing', d => {
     const el = document.getElementById('typing-indicator');
-    el.textContent = `${d.username} is typing...`; el.classList.remove('hidden');
-    clearTimeout(tmo); tmo = setTimeout(() => el.classList.add('hidden'), 3000);
+    if (el) {
+      el.textContent = `${d.username} is typing...`;
+      el.classList.remove('hidden');
+      clearTimeout(tmo);
+      tmo = setTimeout(() => el.classList.add('hidden'), 3000);
+    }
+  });
+
+  socket.on('error', (data) => {
+    console.error('Socket Error:', data.message);
+    alert('Messaging error: ' + data.message);
   });
 
   socket.on('refresh_channels', (data) => {
-    // If the currently open channel was deleted or archived, redirect to home
     if (GROUP_ID === data.id && (data.action === 'delete' || data.action === 'archive')) {
       window.location.href = '/chat';
     } else {
-      // Otherwise, just reload the page to refresh the sidebar
-      // A more surgical approach would be to update the DOM, but reloading is safest to ensure permissions
       window.location.reload();
     }
   });
