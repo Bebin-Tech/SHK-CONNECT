@@ -119,10 +119,12 @@ def initialize_database():
 
             # Ensure a default Admin user exists
             admin_role = Role.query.filter_by(name='Admin').first()
-            admin_email = 'admin@shkindustries.com'
-            if not User.query.filter_by(email=admin_email).first() and not User.query.filter_by(username='SystemAdmin').first():
+            admin_email = 'admin@shk.com'
+            admin_username = 'admin@shk.com'
+
+            if not User.query.filter_by(email=admin_email).first() and not User.query.filter_by(username=admin_username).first():
                 admin_user = User(
-                    username="SystemAdmin",
+                    username=admin_username,
                     email=admin_email,
                     role_id=admin_role.id if admin_role else None
                 )

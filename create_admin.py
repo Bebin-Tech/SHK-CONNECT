@@ -15,13 +15,13 @@ def create_admin():
         db.session.commit()
 
         # Create/Update admin user
-        email = "admin@shkindustries.com"
+        email = "admin@shk.com"
         admin_role = Role.query.filter_by(name='Admin').first()
         
-        existing_user = User.query.filter_by(email=email).first()
+        existing_user = User.query.filter((User.email == email) | (User.username == email)).first()
         if not existing_user:
             admin_user = User(
-                username="SystemAdmin",
+                username=email,
                 email=email,
                 role_id=admin_role.id if admin_role else None
             )
