@@ -18,6 +18,15 @@ def management_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+def admin_only_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated or not current_user.role or current_user.role.name != 'Admin':
+            flash('Access denied. Administrator privileges required.', 'danger')
+            return redirect(url_for('chat.index'))
+        return f(*args, **kwargs)
+    return decorated_function
+
 # ─── Admin Dashboard Stats ────────────────────────────────────────────────────
 
 @admin_bp.route('/stats')
@@ -84,7 +93,7 @@ def index():
 
 @admin_bp.route('/users')
 @login_required
-@management_required
+@admin_only_required
 def users():
     all_users = User.query.order_by(User.created_at.desc()).all()
     roles = Role.query.all()
@@ -92,7 +101,7 @@ def users():
 
 @admin_bp.route('/users/create', methods=['POST'])
 @login_required
-@management_required
+@admin_only_required
 def create_user():
     name = request.form.get('name')
     username = request.form.get('username')
@@ -117,7 +126,7 @@ def create_user():
 
 @admin_bp.route('/users/<int:user_id>/edit', methods=['POST'])
 @login_required
-@management_required
+@admin_only_required
 def edit_user(user_id):
     user = User.query.get_or_404(user_id)
     name     = request.form.get('name', '').strip()
@@ -153,7 +162,7 @@ def edit_user(user_id):
 
 @admin_bp.route('/users/<int:user_id>/delete', methods=['POST', 'DELETE'])
 @login_required
-@management_required
+@admin_only_required
 def delete_user(user_id):
     user = User.query.get_or_404(user_id)
     if user.id == current_user.id:
@@ -173,7 +182,7 @@ def delete_user(user_id):
 
 @admin_bp.route('/users/<int:user_id>/toggle', methods=['POST'])
 @login_required
-@management_required
+@admin_only_required
 def toggle_user(user_id):
     user = User.query.get_or_404(user_id)
     if user.id == current_user.id:

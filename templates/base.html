@@ -153,10 +153,10 @@
                         <span class="font-semibold text-sm">History</span>
                     </a>
 
-                    {% if role in ['Admin', 'Owner', 'ED'] %}
+                    {% if role == 'Admin' %}
                     <div class="pt-3">
                         <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">Management</p>
-                        <!-- User Management — Admin/Owner/ED -->
+                        <!-- User Management — Admin only -->
                         <a href="/admin/users" class="nav-link flex items-center gap-3 p-4 rounded-2xl transition {% if request.path == '/admin/users' %}active{% endif %}">
                             <i data-lucide="users" class="w-5 h-5"></i>
                             <span class="font-semibold text-sm">User Directory</span>
@@ -270,7 +270,7 @@
                     <span class="text-[10px] font-bold uppercase tracking-widest">Admin</span>
                 </a>
                 {% endif %}
-                {% if role in ['Admin', 'Owner', 'ED'] %}
+                {% if role == 'Admin' %}
                 <a href="/admin/users" class="flex flex-col items-center gap-1 {% if '/admin/users' in request.path %}text-shk-blue{% else %}text-slate-300{% endif %}">
                     <i data-lucide="users" class="w-6 h-6"></i>
                     <span class="text-[10px] font-bold uppercase tracking-widest">Users</span>
