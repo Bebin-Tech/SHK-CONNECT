@@ -117,7 +117,21 @@ def initialize_database():
                 if not Role.query.filter_by(name=r).first():
                     db.session.add(Role(name=r))
             db.session.commit()
-            print("Database initialized and roles seeded successfully.")
+
+            # Ensure a default Admin user exists
+            admin_role = Role.query.filter_by(name='Admin').first()
+            if not User.query.filter_by(email='admin@shkindustries.com').first():
+                admin_user = User(
+                    username="SystemAdmin",
+                    email="admin@shkindustries.com",
+                    role_id=admin_role.id if admin_role else None
+                )
+                admin_user.set_password("admin123")
+                db.session.add(admin_user)
+                db.session.commit()
+                print("Default Admin user created.")
+
+            print("Database initialized successfully.")
     except Exception as e:
         print(f"Error initializing database: {e}")
         # Don't re-raise here if you want the app to still try to start,
