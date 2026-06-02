@@ -25,12 +25,30 @@ from extensions import socketio
 
 load_dotenv()
 
+import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 app = Flask(__name__)
 
-def normalize_database_url(database_url):
-    if database_url and database_url.startswith('postgres://'):
-        return database_url.replace('postgres://', 'postgresql://', 1)
-    return database_url
+def normalize_database_url(url):
+    if not url:
+        if os.getenv('FLASK_ENV') == 'production':
+            # In production, we REQUIRE a real database.
+            raise RuntimeError("CRITICAL ERROR: DATABASE_URL not set in production environment!")
+        return 'sqlite:///shk_connect.db'
+    if url.startswith('postgres://'):
+        return url.replace('postgres://', 'postgresql://', 1)
+    return url
+
+db_url = os.getenv('DATABASE_URL')
+app.config['SQLALCHEMY_DATABASE_URI'] = normalize_database_url(db_url)
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+if db_url:
+    logger.info("Using external database (PostgreSQL/MySQL)")
+else:
+    logger.warning("!!! WARNING: DATABASE_URL not found. Using local SQLite. ALL DATA WILL BE LOST ON RESTART ON RENDER/HEROKU !!!")
 
 def env_bool(name, default=False):
     value = os.getenv(name)
@@ -39,14 +57,10 @@ def env_bool(name, default=False):
     return value.strip().lower() in {'1', 'true', 'yes', 'on'}
 
 def get_async_mode():
-    # Force threading for stability on newer Python versions (3.13+)
-    # Eventlet is currently incompatible with threading.start_joinable_thread in 3.13/3.14
     if sys.version_info.major == 3 and sys.version_info.minor >= 13:
         return 'threading'
-
     mode = os.getenv('SOCKETIO_ASYNC_MODE')
     if mode: return mode
-
     try:
         import eventlet
         return 'eventlet'
@@ -54,10 +68,6 @@ def get_async_mode():
         return 'threading'
 
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'shk-industries-default-secret')
-app.config['SQLALCHEMY_DATABASE_URI'] = normalize_database_url(
-    os.getenv('DATABASE_URL', 'sqlite:///shk_connect.db')
-)
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = os.getenv('UPLOAD_FOLDER', os.path.join(app.root_path, 'static', 'uploads'))
 app.config['PREFERRED_URL_SCHEME'] = os.getenv('PREFERRED_URL_SCHEME', 'https')
 
