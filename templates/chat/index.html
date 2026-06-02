@@ -142,11 +142,11 @@
         <div class="flex items-start gap-3 {% if is_me %}flex-row-reverse{% endif %}">
           <div class="w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center font-bold text-xs
                       {% if r=='Admin' %}bg-blue-50 text-blue-600{% elif r=='Owner' %}bg-purple-50 text-purple-600{% elif r=='ED' %}bg-rose-50 text-rose-600{% elif r=='Manager' %}bg-amber-50 text-amber-600{% elif r=='Accounts' %}bg-indigo-50 text-indigo-600{% elif r=='Staff' %}bg-emerald-50 text-emerald-600{% else %}bg-slate-100 text-slate-500{% endif %}">
-            {{ msg.author.username[0].upper() if msg.author else '?' }}
+            {{ (msg.author.first_name[0] if msg.author and msg.author.first_name else (msg.author.username[0] if msg.author else '?')).upper() }}
           </div>
           <div class="message-content max-w-[85%] lg:max-w-[65%] min-w-0">
             <div class="flex items-center gap-1.5 mb-1 {% if is_me %}justify-end{% endif %}">
-              <span class="text-xs font-bold text-shk-navy">{{ msg.author.username if msg.author else 'Unknown' }}</span>
+              <span class="text-xs font-bold text-shk-navy">{{ msg.author.first_name or msg.author.username if msg.author else 'Unknown' }}</span>
               <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full
                           {% if r=='Admin' %}bg-blue-50 text-blue-600{% elif r=='Owner' %}bg-purple-50 text-purple-600{% elif r=='ED' %}bg-rose-50 text-rose-600{% elif r=='Manager' %}bg-amber-50 text-amber-600{% elif r=='Accounts' %}bg-indigo-50 text-indigo-600{% elif r=='Staff' %}bg-emerald-50 text-emerald-600{% else %}bg-slate-50 text-slate-400{% endif %}">{{ r }}</span>
               <span class="text-[10px] text-slate-400">{{ msg.timestamp.strftime('%b %d, %I:%M %p') }}</span>
@@ -345,12 +345,15 @@
           <div class="flex items-center gap-3">
             <input type="checkbox" name="user_ids" value="{{ u.id }}" {% if group and u in group.members %}checked{% endif %} class="w-4 h-4 rounded text-[#1A237E] focus:ring-[#1A237E]">
             <div class="flex flex-col">
-              <span class="text-sm font-bold text-gray-700">{{ u.username }}</span>
-              <span class="text-[10px] font-bold text-gray-400 uppercase">{{ u.role.name if u.role else 'Member' }}</span>
+              <span class="text-sm font-bold text-gray-700">{{ u.first_name or u.username }}</span>
+              <div class="flex items-center gap-2">
+                <span class="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">{{ u.role.name if u.role else 'Member' }}</span>
+                <span class="text-[10px] text-gray-300">@{{ u.username }}</span>
+              </div>
             </div>
           </div>
           <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center font-bold text-xs text-shk-blue">
-            {{ u.username[0].upper() }}
+            {{ (u.first_name[0] if u.first_name else u.username[0]).upper() }}
           </div>
         </label>
         {% endfor %}
@@ -588,16 +591,17 @@ function renderAttachment(data) {
 function buildMsgHTML(data, isReply=false) {
   const isMe = data.username === MY_NAME;
   const role = data.role || 'Member';
+  const displayName = data.full_name || data.username;
   const sz = isReply ? 'w-6 h-6 rounded-md text-[10px]' : 'w-8 h-8 rounded-lg text-xs';
   const contentHTML = data.file_url ? renderAttachment(data) : `<div class="p-3 rounded-2xl text-sm shadow-sm ${isMe?'bg-shk-blue text-white rounded-tr-none':'bg-white text-slate-700 rounded-tl-none border border-slate-100'}">${data.content||''}</div>`;
   return `<div class="flex items-start gap-2 ${isMe?'flex-row-reverse':''}">
-    <div class="${sz} flex-shrink-0 flex items-center justify-center font-bold ${avatarCls(role)}">${data.username[0].toUpperCase()}</div>
+    <div class="${sz} flex-shrink-0 flex items-center justify-center font-bold ${avatarCls(role)}">${displayName[0].toUpperCase()}</div>
     <div class="${isReply?'flex-1':'message-content max-w-[85%] lg:max-w-[65%] min-w-0'}">
       <div class="flex items-center gap-1.5 mb-1 ${isMe?'justify-end':''}">
-        <span class="${isReply?'text-[11px]':'text-xs'} font-bold text-shk-navy">${data.username}</span>${roleBadge(role)}<span class="text-[10px] text-slate-400">${data.timestamp}</span>
+        <span class="${isReply?'text-[11px]':'text-xs'} font-bold text-shk-navy">${displayName}</span>${roleBadge(role)}<span class="text-[10px] text-slate-400">${data.timestamp}</span>
       </div>
       ${contentHTML}
-      ${isReply?'':`<div class="mt-1 ${isMe?'flex justify-end':''}"><button onclick="setReply(${data.id},'${data.username}','${(data.content||'').substring(0,50).replace(/'/g,"\\\\'")}')" class="text-[10px] text-slate-400 hover:text-shk-blue font-semibold flex items-center gap-1"><i data-lucide="corner-up-right" class="w-3 h-3"></i> Reply</button></div>`}
+      ${isReply?'':`<div class="mt-1 ${isMe?'flex justify-end':''}"><button onclick="setReply(${data.id},'${displayName}','${(data.content||'').substring(0,50).replace(/'/g,"\\\\'")}')" class="text-[10px] text-slate-400 hover:text-shk-blue font-semibold flex items-center gap-1"><i data-lucide="corner-up-right" class="w-3 h-3"></i> Reply</button></div>`}
     </div>
   </div>`;
 }

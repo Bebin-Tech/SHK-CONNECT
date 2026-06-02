@@ -127,6 +127,7 @@ def register_socket_handlers(socketio):
             output = {
                 'id':           msg.id,
                 'username':     current_user.username,
+                'full_name':    current_user.first_name,
                 'role':         role_name,
                 'content':      content,
                 'file_url':     file_url,

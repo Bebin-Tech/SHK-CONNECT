@@ -103,6 +103,7 @@ def users():
 @login_required
 @admin_required
 def create_user():
+    name = request.form.get('name')
     username = request.form.get('username')
     email = request.form.get('email')
     password = request.form.get('password')
@@ -116,7 +117,7 @@ def create_user():
         flash('Email already exists.', 'danger')
         return redirect(url_for('admin.users'))
     
-    user = User(username=username, email=email, role_id=role_id)
+    user = User(username=username, email=email, role_id=role_id, first_name=name)
     user.set_password(password)
     db.session.add(user)
     db.session.commit()
@@ -128,10 +129,14 @@ def create_user():
 @admin_required
 def edit_user(user_id):
     user = User.query.get_or_404(user_id)
+    name     = request.form.get('name', '').strip()
     username = request.form.get('username', '').strip()
     email    = request.form.get('email', '').strip()
     password = request.form.get('password', '').strip()
     role_id  = request.form.get('role_id')
+
+    if name:
+        user.first_name = name
 
     if username and username != user.username:
         if User.query.filter_by(username=username).first():

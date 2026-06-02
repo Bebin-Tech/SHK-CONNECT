@@ -109,6 +109,7 @@ def load_history(group_id):
         results.append({
             'id': m.id,
             'username': m.author.username if m.author else 'Unknown',
+            'full_name': m.author.first_name if m.author else None,
             'role': m.author.role.name if m.author and m.author.role else 'Member',
             'content': m.content,
             'timestamp': m.timestamp.strftime('%I:%M %p'),

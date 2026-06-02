@@ -43,7 +43,7 @@
     <div class="md:hidden divide-y" id="userCards">
       {% for user in users %}
       {% set r = user.role.name if user.role else 'No Role' %}
-      <div class="user-card p-4 space-y-4" data-name="{{ user.username|lower }}" data-email="{{ user.email|lower }}">
+      <div class="user-card p-4 space-y-4" data-name="{{ user.first_name|lower or user.username|lower }}" data-email="{{ user.email|lower }}">
         <div class="flex items-start gap-3">
           <div class="w-11 h-11 rounded-xl flex-shrink-0 flex items-center justify-center font-bold text-sm
                       {% if r == 'Admin' %}bg-blue-100 text-blue-700
@@ -53,10 +53,11 @@
                       {% elif r == 'Accounts' %}bg-indigo-100 text-indigo-700
                       {% elif r == 'Staff' %}bg-emerald-100 text-emerald-700
                       {% else %}bg-orange-100 text-orange-600{% endif %}">
-            {{ user.username[0].upper() }}
+            {{ (user.first_name[0] if user.first_name else user.username[0]).upper() }}
           </div>
           <div class="min-w-0 flex-1">
-            <p class="font-bold text-gray-800 user-name truncate">{{ user.username }}</p>
+            <p class="font-bold text-gray-800 user-name truncate">{{ user.first_name or user.username }}</p>
+            <p class="text-xs text-gray-400 truncate">@{{ user.username }}</p>
             <p class="text-xs text-gray-500 truncate">{{ user.email }}</p>
             <div class="mt-2 flex items-center gap-2 flex-wrap">
               <span class="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider
@@ -76,7 +77,7 @@
           </div>
         </div>
         <div class="grid grid-cols-2 gap-2">
-          <button onclick="openEdit({{ user.id }}, '{{ user.username }}', '{{ user.email }}', '{{ user.role_id or '' }}')"
+          <button onclick="openEdit({{ user.id }}, '{{ user.first_name or '' }}', '{{ user.username }}', '{{ user.email }}', '{{ user.role_id or '' }}')"
             class="py-2.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-xl transition font-bold text-xs flex items-center justify-center gap-2" title="Edit">
             <i data-lucide="edit-3" class="w-4 h-4"></i> Edit
           </button>
@@ -123,9 +124,12 @@
                           {% elif user.role and user.role.name == 'Accounts' %}bg-indigo-100 text-indigo-700
                           {% elif user.role and user.role.name == 'Staff' %}bg-emerald-100 text-emerald-700
                           {% else %}bg-orange-100 text-orange-600{% endif %}">
-                {{ user.username[0].upper() }}
+                {{ (user.first_name[0] if user.first_name else user.username[0]).upper() }}
               </div>
-              <span class="font-semibold text-gray-800 user-name">{{ user.username }}</span>
+              <div class="flex flex-col">
+                <span class="font-semibold text-gray-800 user-name">{{ user.first_name or user.username }}</span>
+                <span class="text-[10px] text-gray-400">@{{ user.username }}</span>
+              </div>
             </div>
           </td>
           <td class="px-6 py-4 text-gray-500">{{ user.email }}</td>
@@ -154,7 +158,7 @@
           <td class="px-6 py-4">
             <div class="flex items-center justify-center gap-2">
               <!-- Edit button -->
-              <button onclick="openEdit({{ user.id }}, '{{ user.username }}', '{{ user.email }}', '{{ user.role_id or '' }}')"
+              <button onclick="openEdit({{ user.id }}, '{{ user.first_name or '' }}', '{{ user.username }}', '{{ user.email }}', '{{ user.role_id or '' }}')"
                 class="p-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg transition" title="Edit">
                 <i data-lucide="edit-3" class="w-4 h-4"></i>
               </button>
@@ -189,7 +193,12 @@
     </div>
     <form action="{{ url_for('admin.create_user') }}" method="POST" class="space-y-4">
       <div>
-        <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Username</label>
+        <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Full Name</label>
+        <input type="text" name="name" placeholder="John Doe"
+          class="w-full p-3 border border-gray-200 rounded-xl outline-none focus:border-[#1A237E] text-sm font-semibold" required>
+      </div>
+      <div>
+        <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">User ID (Username)</label>
         <input type="text" name="username" placeholder="john_doe"
           class="w-full p-3 border border-gray-200 rounded-xl outline-none focus:border-[#1A237E] text-sm font-semibold" required>
       </div>
@@ -230,7 +239,12 @@
     </div>
     <form id="editForm" method="POST" class="space-y-4">
       <div>
-        <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Username</label>
+        <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Full Name</label>
+        <input type="text" name="name" id="editName"
+          class="w-full p-3 border border-gray-200 rounded-xl outline-none focus:border-[#1A237E] text-sm font-semibold">
+      </div>
+      <div>
+        <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">User ID (Username)</label>
         <input type="text" name="username" id="editUsername"
           class="w-full p-3 border border-gray-200 rounded-xl outline-none focus:border-[#1A237E] text-sm font-semibold">
       </div>
@@ -267,7 +281,8 @@ function openModal(id) {
 function closeModal(id) {
   document.getElementById(id).classList.add('hidden');
 }
-function openEdit(userId, username, email, roleId) {
+function openEdit(userId, name, username, email, roleId) {
+  document.getElementById('editName').value     = name;
   document.getElementById('editUsername').value = username;
   document.getElementById('editEmail').value    = email;
   document.getElementById('editRole').value     = roleId;
