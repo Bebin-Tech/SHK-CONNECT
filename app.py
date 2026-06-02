@@ -137,13 +137,16 @@ def login():
     if current_user.is_authenticated:
         return redirect(url_for('chat.index'))
     if request.method == 'POST':
-        email = request.form.get('email')
+        identifier = request.form.get('email') # This matches the 'name' attribute in your login template
         password = request.form.get('password')
-        user = User.query.filter_by(email=email).first()
+
+        # Check by Email OR Username
+        user = User.query.filter((User.email == identifier) | (User.username == identifier)).first()
+
         if user and user.check_password(password):
             login_user(user, remember=True)
             return redirect(url_for('chat.index'))
-        flash('Invalid email or password', 'danger')
+        flash('Invalid User ID or password', 'danger')
     return render_template('login.html', title='Login')
 
 @app.route('/signup', methods=['GET', 'POST'])
