@@ -231,6 +231,17 @@ def edit_group_metadata(group_id):
     flash(f'Channel "{name}" updated successfully.', 'success')
     return redirect(url_for('admin.index'))
 
+@admin_bp.route('/groups/<int:group_id>/join')
+@login_required
+@admin_or_owner_required
+def join_group(group_id):
+    group = Group.query.get_or_404(group_id)
+    if current_user not in group.members:
+        group.members.append(current_user)
+        db.session.commit()
+        flash(f'You have joined "{group.name}".', 'success')
+    return redirect(url_for('chat.index', group_id=group.id))
+
 @admin_bp.route('/groups/<int:group_id>/archive')
 @login_required
 @admin_or_owner_required
