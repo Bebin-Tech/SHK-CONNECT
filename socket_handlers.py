@@ -9,9 +9,14 @@ def user_can_access_group(group, user):
     if not user.is_authenticated or not group or group.is_archived:
         return False
 
-    # Everyone MUST be a direct member to access via socket
-    # (Admins can still view the page via bypass in chat_routes,
-    # but we should probably keep them in sync if we want strictness)
+    role = user.role
+    role_name = role.name if role else 'Member'
+
+    # Management Tier (Admin, Owner, ED) always have access
+    if role_name in ['Admin', 'Owner', 'ED']:
+        return True
+
+    # Check if user is a direct member
     is_member = group.members.filter_by(id=user.id).first() is not None
     return is_member
 

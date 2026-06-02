@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
-{% set can_manage_channel = group and current_user.role and (current_user.role.name in ['Admin', 'Owner'] or group.created_by == current_user.id) %}
+{% set can_manage_channel = group and current_user.role and (current_user.role.name in ['Admin', 'Owner', 'ED'] or group.created_by == current_user.id) %}
 <div class="chat-layout flex flex-1 h-full min-h-0 bg-shk-light relative overflow-hidden pb-20 lg:pb-0">
   <div id="channel-overlay" onclick="closeChannels()" class="fixed top-16 bottom-20 left-0 right-0 z-30 bg-slate-900/40 hidden opacity-0 transition-opacity duration-300 lg:hidden"></div>
 

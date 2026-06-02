@@ -71,7 +71,7 @@
                     <a href="/chat" class="flex items-center gap-3 p-4 rounded-2xl {% if '/chat' in request.path %}bg-slate-50 text-shk-blue{% endif %} font-bold">
                         <i data-lucide="message-circle"></i> Team Chat
                     </a>
-                    {% if role in ['Admin', 'Owner'] %}
+                    {% if role in ['Admin', 'Owner', 'ED'] %}
                     <a href="/admin/" class="flex items-center gap-3 p-4 rounded-2xl {% if request.path == '/admin/' %}bg-slate-50 text-shk-blue{% endif %} font-bold">
                         <i data-lucide="layout-dashboard"></i> Admin Center
                     </a>
@@ -153,10 +153,10 @@
                         <span class="font-semibold text-sm">History</span>
                     </a>
 
-                    {% if role == 'Admin' %}
+                    {% if role in ['Admin', 'Owner', 'ED'] %}
                     <div class="pt-3">
                         <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">Management</p>
-                        <!-- User Management — Admin only -->
+                        <!-- User Management — Admin/Owner/ED -->
                         <a href="/admin/users" class="nav-link flex items-center gap-3 p-4 rounded-2xl transition {% if request.path == '/admin/users' %}active{% endif %}">
                             <i data-lucide="users" class="w-5 h-5"></i>
                             <span class="font-semibold text-sm">User Directory</span>
@@ -264,13 +264,13 @@
                     <span class="text-[10px] font-bold uppercase tracking-widest">Chat</span>
                 </a>
                 {% set role = current_user.role.name if current_user.role else 'Member' %}
-                {% if role in ['Admin', 'Owner'] %}
+                {% if role in ['Admin', 'Owner', 'ED'] %}
                 <a href="/admin/" class="flex flex-col items-center gap-1 {% if request.path == '/admin/' %}text-shk-blue{% else %}text-slate-300{% endif %}">
                     <i data-lucide="layout-dashboard" class="w-6 h-6"></i>
                     <span class="text-[10px] font-bold uppercase tracking-widest">Admin</span>
                 </a>
                 {% endif %}
-                {% if role == 'Admin' %}
+                {% if role in ['Admin', 'Owner', 'ED'] %}
                 <a href="/admin/users" class="flex flex-col items-center gap-1 {% if '/admin/users' in request.path %}text-shk-blue{% else %}text-slate-300{% endif %}">
                     <i data-lucide="users" class="w-6 h-6"></i>
                     <span class="text-[10px] font-bold uppercase tracking-widest">Users</span>

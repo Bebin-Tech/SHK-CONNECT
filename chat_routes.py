@@ -57,17 +57,22 @@ def index(group_id=None):
     role_obj = current_user.role
     role_name = role_obj.name if role_obj else 'Member'
 
-    # Everyone (including Admins/Owners) only see channels they are connected to in the sidebar
-    groups = Group.query.filter(Group.is_archived == False).filter(
-        Group.members.any(id=current_user.id)
-    ).order_by(Group.created_at.asc()).all()
+    # Management Tier (Admin, Owner, ED) can see all channels
+    # Others only see channels they are connected to
+    if role_name in ['Admin', 'Owner', 'ED']:
+        groups = Group.query.filter_by(is_archived=False).order_by(Group.created_at.asc()).all()
+    else:
+        groups = Group.query.filter(Group.is_archived == False).filter(
+            Group.members.any(id=current_user.id)
+        ).order_by(Group.created_at.asc()).all()
 
     group = None
     messages = []
     if group_id:
         group = Group.query.get_or_404(group_id)
-        # Security check: MUST be a member (Admins can join via Admin Dashboard)
-        if current_user not in group.members:
+        # Security check: Management Tier see all, others MUST be a member
+        is_member = current_user in group.members
+        if role_name not in ['Admin', 'Owner', 'ED'] and not is_member:
             flash('You must be a member to access this channel.', 'danger')
             return redirect(url_for('chat.index'))
         
@@ -92,8 +97,9 @@ def index(group_id=None):
 @login_required
 def load_history(group_id):
     group = Group.query.get_or_404(group_id)
-    # Security check: MUST be a member
-    if current_user not in group.members:
+    # Security check: Management Tier see all, others MUST be a member
+    role_name = current_user.role.name if current_user.role else 'Member'
+    if role_name not in ['Admin', 'Owner', 'ED'] and current_user not in group.members:
         return jsonify({'error': 'Unauthorized'}), 403
 
     offset = request.args.get('offset', 0, type=int)
@@ -253,10 +259,13 @@ def search():
     role_obj = current_user.role
     role_name = role_obj.name if role_obj else 'Member'
 
-    # Everyone only searches channels they are connected to
-    accessible_group_ids = db.session.query(Group.id).filter(
-        Group.members.any(id=current_user.id)
-    ).all()
+    # Management Tier see all, others only connected
+    if role_name in ['Admin', 'Owner', 'ED']:
+        accessible_group_ids = db.session.query(Group.id).all()
+    else:
+        accessible_group_ids = db.session.query(Group.id).filter(
+            Group.members.any(id=current_user.id)
+        ).all()
 
     accessible_group_ids = [g[0] for g in accessible_group_ids]
 

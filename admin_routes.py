@@ -9,20 +9,11 @@ admin_bp = Blueprint('admin', __name__)
 
 # ─── Role Decorators ──────────────────────────────────────────────────────────
 
-def admin_required(f):
+def management_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if not current_user.is_authenticated or not current_user.role or current_user.role.name != 'Admin':
-            flash('Access denied. Admin privileges required.', 'danger')
-            return redirect(url_for('chat.index'))
-        return f(*args, **kwargs)
-    return decorated_function
-
-def admin_or_owner_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if not current_user.is_authenticated or not current_user.role or current_user.role.name not in ['Admin', 'Owner']:
-            flash('Access denied. Insufficient privileges.', 'danger')
+        if not current_user.is_authenticated or not current_user.role or current_user.role.name not in ['Admin', 'Owner', 'ED']:
+            flash('Access denied. Management privileges required.', 'danger')
             return redirect(url_for('chat.index'))
         return f(*args, **kwargs)
     return decorated_function
@@ -31,7 +22,7 @@ def admin_or_owner_required(f):
 
 @admin_bp.route('/stats')
 @login_required
-@admin_or_owner_required
+@management_required
 def get_stats():
     from models import Expense
     active_groups = Group.query.filter_by(is_archived=False).all()
@@ -64,7 +55,7 @@ def get_stats():
 
 @admin_bp.route('/')
 @login_required
-@admin_or_owner_required
+@management_required
 def index():
     from models import Expense
     active_groups = Group.query.filter_by(is_archived=False).all()
@@ -93,7 +84,7 @@ def index():
 
 @admin_bp.route('/users')
 @login_required
-@admin_required
+@management_required
 def users():
     all_users = User.query.order_by(User.created_at.desc()).all()
     roles = Role.query.all()
@@ -101,7 +92,7 @@ def users():
 
 @admin_bp.route('/users/create', methods=['POST'])
 @login_required
-@admin_required
+@management_required
 def create_user():
     name = request.form.get('name')
     username = request.form.get('username')
@@ -126,7 +117,7 @@ def create_user():
 
 @admin_bp.route('/users/<int:user_id>/edit', methods=['POST'])
 @login_required
-@admin_required
+@management_required
 def edit_user(user_id):
     user = User.query.get_or_404(user_id)
     name     = request.form.get('name', '').strip()
@@ -162,7 +153,7 @@ def edit_user(user_id):
 
 @admin_bp.route('/users/<int:user_id>/delete', methods=['POST', 'DELETE'])
 @login_required
-@admin_required
+@management_required
 def delete_user(user_id):
     user = User.query.get_or_404(user_id)
     if user.id == current_user.id:
@@ -182,7 +173,7 @@ def delete_user(user_id):
 
 @admin_bp.route('/users/<int:user_id>/toggle', methods=['POST'])
 @login_required
-@admin_required
+@management_required
 def toggle_user(user_id):
     user = User.query.get_or_404(user_id)
     if user.id == current_user.id:
@@ -195,7 +186,7 @@ def toggle_user(user_id):
 
 @admin_bp.route('/groups/create', methods=['POST'])
 @login_required
-@admin_or_owner_required
+@management_required
 def create_group():
     import string, random
     name = (request.form.get('name') or '').strip()
@@ -214,7 +205,7 @@ def create_group():
 
 @admin_bp.route('/groups/<int:group_id>/edit', methods=['POST'])
 @login_required
-@admin_or_owner_required
+@management_required
 def edit_group_metadata(group_id):
     group = Group.query.get_or_404(group_id)
     name = (request.form.get('name') or '').strip()
@@ -233,7 +224,7 @@ def edit_group_metadata(group_id):
 
 @admin_bp.route('/groups/<int:group_id>/join')
 @login_required
-@admin_or_owner_required
+@management_required
 def join_group(group_id):
     group = Group.query.get_or_404(group_id)
     if current_user not in group.members:
@@ -244,7 +235,7 @@ def join_group(group_id):
 
 @admin_bp.route('/groups/<int:group_id>/archive')
 @login_required
-@admin_or_owner_required
+@management_required
 def archive_group(group_id):
     group = Group.query.get_or_404(group_id)
     group.is_archived = True
@@ -255,7 +246,7 @@ def archive_group(group_id):
 
 @admin_bp.route('/groups/<int:group_id>/delete')
 @login_required
-@admin_or_owner_required
+@management_required
 def delete_group(group_id):
     group = Group.query.get_or_404(group_id)
     name = group.name
