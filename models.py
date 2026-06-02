@@ -12,12 +12,6 @@ group_members = db.Table('group_members',
     db.Column('joined_at', db.DateTime, default=datetime.utcnow)
 )
 
-# Association table for Role-based Group Access
-group_roles = db.Table('group_roles',
-    db.Column('group_id', db.Integer, db.ForeignKey('groups.id'), primary_key=True),
-    db.Column('role_id', db.Integer, db.ForeignKey('roles.id'), primary_key=True)
-)
-
 class Role(db.Model):
     __tablename__ = 'roles'
     id = db.Column(db.Integer, primary_key=True)
@@ -65,7 +59,6 @@ class Group(db.Model):
     # Relationships
     creator = db.relationship('User', foreign_keys=[created_by], backref='groups_created')
     messages = db.relationship('Message', backref='group', lazy=True, cascade="all, delete-orphan")
-    roles = db.relationship('Role', secondary=group_roles, backref=db.backref('groups', lazy='dynamic'))
 
     @staticmethod
     def apply_default_access(group, user):

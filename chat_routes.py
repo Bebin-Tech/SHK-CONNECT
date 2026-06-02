@@ -81,7 +81,6 @@ def index(group_id=None):
                                .limit(50).all()
         messages.reverse()
 
-    all_roles = Role.query.all()
     # Sort users by role then name to make management easier
     all_users = User.query.join(Role).order_by(Role.name, User.first_name, User.username).all()
 
@@ -90,7 +89,6 @@ def index(group_id=None):
                            groups=groups, 
                            group=group, 
                            messages=messages, 
-                           all_roles=all_roles,
                            all_users=all_users)
 
 @chat_bp.route('/load_history/<int:group_id>')
