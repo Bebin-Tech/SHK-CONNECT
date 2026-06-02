@@ -89,8 +89,8 @@
           <i data-lucide="settings-2" class="w-4 h-4"></i>
           <span class="hidden sm:inline text-xs font-bold uppercase tracking-wider">Edit</span>
         </button>
-        <button onclick="document.getElementById('connectRolesModal').classList.remove('hidden')"
-                class="p-2 bg-slate-50 text-shk-blue rounded-xl hover:bg-slate-100 transition border border-slate-100 flex items-center gap-2" title="Connect Roles">
+        <button onclick="document.getElementById('connectUsersModal').classList.remove('hidden')"
+                class="p-2 bg-slate-50 text-shk-blue rounded-xl hover:bg-slate-100 transition border border-slate-100 flex items-center gap-2" title="Connect Users">
           <i data-lucide="link" class="w-4 h-4"></i>
           <span class="hidden sm:inline text-xs font-bold uppercase tracking-wider">Connect</span>
         </button>
@@ -330,20 +330,28 @@
   </div>
 </div>
 
-<div id="connectRolesModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+<div id="connectUsersModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
   <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md max-h-[88dvh] overflow-y-auto p-5 sm:p-8">
     <div class="flex items-center justify-between mb-6">
-      <h3 class="text-xl font-bold text-[#1A237E]">Connect Roles</h3>
-      <button onclick="document.getElementById('connectRolesModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+      <h3 class="text-xl font-bold text-[#1A237E]">Connect Users</h3>
+      <button onclick="document.getElementById('connectUsersModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600"><i data-lucide="x" class="w-5 h-5"></i></button>
     </div>
-    <p class="text-xs text-gray-400 mb-4 font-semibold uppercase tracking-wider">Select roles allowed to access this channel</p>
-    <form id="connectRolesForm" class="space-y-3">
+    <p class="text-xs text-gray-400 mb-4 font-semibold uppercase tracking-wider">Select users allowed to access this channel</p>
+    <form id="connectUsersForm" class="space-y-3">
       <input type="hidden" name="group_id" value="{{ group.id if group else '' }}">
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-60 overflow-y-auto pr-2">
-        {% for r in all_roles %}
-        <label class="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:bg-gray-50 transition cursor-pointer">
-          <input type="checkbox" name="role_ids" value="{{ r.id }}" {% if group and r in group.roles %}checked{% endif %} class="w-4 h-4 rounded text-[#1A237E] focus:ring-[#1A237E]">
-          <span class="text-sm font-bold text-gray-700">{{ r.name }}</span>
+      <div class="grid grid-cols-1 gap-3 max-h-80 overflow-y-auto pr-2">
+        {% for u in all_users %}
+        <label class="flex items-center justify-between p-3 rounded-xl border border-gray-100 hover:bg-gray-50 transition cursor-pointer">
+          <div class="flex items-center gap-3">
+            <input type="checkbox" name="user_ids" value="{{ u.id }}" {% if group and u in group.members %}checked{% endif %} class="w-4 h-4 rounded text-[#1A237E] focus:ring-[#1A237E]">
+            <div class="flex flex-col">
+              <span class="text-sm font-bold text-gray-700">{{ u.username }}</span>
+              <span class="text-[10px] font-bold text-gray-400 uppercase">{{ u.role.name if u.role else 'Member' }}</span>
+            </div>
+          </div>
+          <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center font-bold text-xs text-shk-blue">
+            {{ u.username[0].upper() }}
+          </div>
         </label>
         {% endfor %}
       </div>
@@ -439,18 +447,18 @@ document.getElementById('createChannelForm')?.addEventListener('submit', async f
   }
 });
 
-document.getElementById('connectRolesForm')?.addEventListener('submit', async function(e) {
+document.getElementById('connectUsersForm')?.addEventListener('submit', async function(e) {
   e.preventDefault();
-  if (!GROUP_ID) return alert('Select a channel before connecting roles.');
+  if (!GROUP_ID) return alert('Select a channel before connecting users.');
   setSubmitState(this, true);
   const fd = new FormData(this);
   try {
-    const resp = await fetch(`/chat/connect_roles/${GROUP_ID}`, { method: 'POST', body: fd, credentials: 'same-origin' });
+    const resp = await fetch(`/chat/connect_users/${GROUP_ID}`, { method: 'POST', body: fd, credentials: 'same-origin' });
     const data = await readJsonResponse(resp);
     if (data.success) location.reload();
-    else alert(data.error || 'Failed to connect roles');
+    else alert(data.error || 'Failed to connect users');
   } catch (err) {
-    alert(err.message || 'Failed to connect roles');
+    alert(err.message || 'Failed to connect users');
     setSubmitState(this, false);
   }
 });

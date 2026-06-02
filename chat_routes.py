@@ -2,7 +2,7 @@ import os
 import uuid
 from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for, current_app
 from flask_login import login_required, current_user
-from models import db, Message, Group, Role
+from models import db, Message, Group, Role, User
 from werkzeug.utils import secure_filename
 from sqlalchemy import or_
 from extensions import socketio
@@ -61,10 +61,7 @@ def index(group_id=None):
         groups = Group.query.filter_by(is_archived=False).order_by(Group.created_at.asc()).all()
     else:
         groups = Group.query.filter(Group.is_archived == False).filter(
-            or_(
-                Group.members.any(id=current_user.id),
-                Group.roles.any(id=current_user.role_id)
-            )
+            Group.members.any(id=current_user.id)
         ).order_by(Group.created_at.asc()).all()
 
     group = None
@@ -73,8 +70,7 @@ def index(group_id=None):
         group = Group.query.get_or_404(group_id)
         # Security check
         is_member = current_user in group.members
-        role_connected = role_obj in group.roles if role_obj else False
-        if role_name not in ['Admin', 'Owner'] and not (is_member or role_connected):
+        if role_name not in ['Admin', 'Owner'] and not is_member:
             flash('Unauthorized access to this channel.', 'danger')
             return redirect(url_for('chat.index'))
         
@@ -84,13 +80,15 @@ def index(group_id=None):
         messages.reverse()
 
     all_roles = Role.query.all()
-    
+    all_users = User.query.filter_by(is_active=True).all()
+
     return render_template('chat/index.html', 
                            title=group.name if group else 'Team Chat',
                            groups=groups, 
                            group=group, 
                            messages=messages, 
-                           all_roles=all_roles)
+                           all_roles=all_roles,
+                           all_users=all_users)
 
 @chat_bp.route('/load_history/<int:group_id>')
 @login_required
@@ -98,7 +96,7 @@ def load_history(group_id):
     group = Group.query.get_or_404(group_id)
     # Security check (simplified)
     role_name = current_user.role.name if current_user.role else 'Member'
-    if role_name not in ['Admin', 'Owner'] and current_user not in group.members and (current_user.role not in group.roles if current_user.role else True):
+    if role_name not in ['Admin', 'Owner'] and current_user not in group.members:
         return jsonify({'error': 'Unauthorized'}), 403
 
     offset = request.args.get('offset', 0, type=int)
@@ -124,21 +122,23 @@ def load_history(group_id):
         })
     return jsonify(results)
 
-@chat_bp.route('/connect_roles/<int:group_id>', methods=['POST'])
+@chat_bp.route('/connect_users/<int:group_id>', methods=['POST'])
 @login_required
-def connect_roles(group_id):
+def connect_users(group_id):
     group = Group.query.get_or_404(group_id)
     
     if not can_manage_group(group):
         return jsonify({'error': 'Unauthorized'}), 403
         
-    role_ids = request.form.getlist('role_ids')
+    user_ids = request.form.getlist('user_ids')
     
-    group.roles = []
-    for rid in role_ids:
-        r = db.session.get(Role, rid)
-        if r:
-            group.roles.append(r)
+    # We maintain individual membership
+    from models import User
+    group.members = []
+    for uid in user_ids:
+        u = db.session.get(User, uid)
+        if u:
+            group.members.append(u)
             
     db.session.commit()
     return jsonify({'success': True})
@@ -259,10 +259,7 @@ def search():
         accessible_group_ids = db.session.query(Group.id).all()
     else:
         accessible_group_ids = db.session.query(Group.id).filter(
-            or_(
-                Group.members.any(id=current_user.id),
-                Group.roles.any(id=current_user.role_id)
-            )
+            Group.members.any(id=current_user.id)
         ).all()
 
     accessible_group_ids = [g[0] for g in accessible_group_ids]

@@ -69,13 +69,11 @@ class Group(db.Model):
 
     @staticmethod
     def apply_default_access(group, user):
-        """Helper to set default role-based access for a new group."""
-        from models import Role
-        role_name = user.role.name if user.role else 'Member'
-        if role_name in ['Admin', 'Owner']:
-            group.roles = Role.query.all()
-        elif user.role:
-            group.roles.append(user.role)
+        """Helper to set default individual access for a new group."""
+        # By default, only the creator is added.
+        # Admins/Owners can see all channels due to logic in chat_routes.py
+        if user not in group.members:
+            group.members.append(user)
 
 class Message(db.Model):
     __tablename__ = 'messages'

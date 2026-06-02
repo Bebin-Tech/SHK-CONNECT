@@ -24,5 +24,5 @@ ENV FLASK_APP=app.py
 ENV FLASK_ENV=production
 ENV PORT=5000
 
-# Run with Gunicorn and Eventlet for SocketIO support
-CMD ["gunicorn", "--worker-class", "eventlet", "-w", "1", "--bind", "0.0.0.0:5000", "app:app"]
+# Run with Gunicorn using the config file
+CMD ["gunicorn", "-c", "gunicorn.conf.py", "app:app"]

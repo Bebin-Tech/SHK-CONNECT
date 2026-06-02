@@ -1,3 +1,13 @@
+import eventlet
+eventlet.monkey_patch()
+
+# Patch psycopg2 for eventlet if it's installed
+try:
+    from psycogreen.eventlet import patch_psycopg
+    patch_psycopg()
+except ImportError:
+    pass
+
 import os
 import sys
 
@@ -6,7 +16,7 @@ from flask_socketio import SocketIO
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_migrate import Migrate
 from sqlalchemy import inspect, text
-from models import db, User, Role, Group, Message
+from models import db, User, Role, Group, Message, Expense, ActivityLog, SupportTicket
 from admin_routes import admin_bp
 from chat_routes import chat_bp
 from socket_handlers import register_socket_handlers
@@ -79,15 +89,21 @@ def load_user(user_id):
 
 def initialize_database():
     if not env_bool('AUTO_CREATE_DB', True): return
-    with app.app_context():
-        db.create_all()
-        # Seed basic roles
-        roles = ['Admin', 'Owner', 'Manager', 'Staff', 'Accounts', 'ED', 'Member']
-        for r in roles:
-            if not Role.query.filter_by(name=r).first():
-                db.session.add(Role(name=r))
-        db.session.commit()
-        print("Database initialized and roles seeded.")
+    try:
+        with app.app_context():
+            db.create_all()
+            # Seed basic roles
+            roles = ['Admin', 'Owner', 'Manager', 'Staff', 'Accounts', 'ED', 'Member']
+            for r in roles:
+                if not Role.query.filter_by(name=r).first():
+                    db.session.add(Role(name=r))
+            db.session.commit()
+            print("Database initialized and roles seeded successfully.")
+    except Exception as e:
+        print(f"Error initializing database: {e}")
+        # Don't re-raise here if you want the app to still try to start,
+        # but for Render it's often better to fail fast so you see it in logs.
+        raise e
 
 initialize_database()
 

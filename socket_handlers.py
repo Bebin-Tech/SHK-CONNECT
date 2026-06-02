@@ -22,11 +22,6 @@ def user_can_access_group(group, user):
     if is_member:
         return True
 
-    # Check if user's role is allowed in this group
-    # group.roles is a standard list relationship
-    if role and role in group.roles:
-        return True
-
     return False
 
 def register_socket_handlers(socketio):
