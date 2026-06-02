@@ -91,6 +91,12 @@ def initialize_database():
     if not env_bool('AUTO_CREATE_DB', True): return
     try:
         with app.app_context():
+            # Check if we already have roles. If so, we assume DB is initialized.
+            if inspect(db.engine).has_table("roles"):
+                if Role.query.first():
+                    print("Database already initialized. Skipping seed.")
+                    return
+
             db.create_all()
             # Seed basic roles
             roles = ['Admin', 'Owner', 'Manager', 'Staff', 'Accounts', 'ED', 'Member']
