@@ -105,38 +105,39 @@ def initialize_database():
     try:
         with app.app_context():
             # Check if we already have roles. If so, we assume DB is initialized.
-            if inspect(db.engine).has_table("roles"):
-                if Role.query.first():
-                    print("Database already initialized. Skipping seed.")
-                    return
+            inspector = inspect(db.engine)
+            if not inspector.has_table("roles"):
+                db.create_all()
+                print("Database tables created.")
 
-            db.create_all()
             # Seed basic roles
             roles = ['Admin', 'Owner', 'Manager', 'Staff', 'Accounts', 'ED', 'Member']
-            for r in roles:
-                if not Role.query.filter_by(name=r).first():
-                    db.session.add(Role(name=r))
+            for r_name in roles:
+                if not Role.query.filter_by(name=r_name).first():
+                    db.session.add(Role(name=r_name))
             db.session.commit()
 
             # Ensure a default Admin user exists
             admin_role = Role.query.filter_by(name='Admin').first()
-            if not User.query.filter_by(email='admin@shkindustries.com').first():
+            admin_email = 'admin@shkindustries.com'
+            if not User.query.filter_by(email=admin_email).first() and not User.query.filter_by(username='SystemAdmin').first():
                 admin_user = User(
                     username="SystemAdmin",
-                    email="admin@shkindustries.com",
+                    email=admin_email,
                     role_id=admin_role.id if admin_role else None
                 )
                 admin_user.set_password("admin123")
                 db.session.add(admin_user)
                 db.session.commit()
-                print("Default Admin user created.")
+                print(f"Default Admin user created: {admin_email} / admin123")
 
-            print("Database initialized successfully.")
+            print("Database check/initialization complete.")
     except Exception as e:
-        print(f"Error initializing database: {e}")
-        # Don't re-raise here if you want the app to still try to start,
-        # but for Render it's often better to fail fast so you see it in logs.
-        raise e
+        print(f"Error during database initialization: {e}")
+        db.session.rollback()
+        # In production, if we can't init the DB, we might want to know.
+        if os.getenv('FLASK_ENV') == 'production':
+            raise e
 
 initialize_database()
 

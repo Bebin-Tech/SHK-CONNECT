@@ -80,7 +80,8 @@ def index(group_id=None):
         messages.reverse()
 
     all_roles = Role.query.all()
-    all_users = User.query.filter_by(is_active=True).all()
+    # Sort users by role then name to make management easier
+    all_users = User.query.join(Role).order_by(Role.name, User.first_name, User.username).all()
 
     return render_template('chat/index.html', 
                            title=group.name if group else 'Team Chat',
