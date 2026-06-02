@@ -34,9 +34,12 @@ app = Flask(__name__)
 def normalize_database_url(url):
     if not url:
         if os.getenv('FLASK_ENV') == 'production':
-            # In production, we REQUIRE a real database.
             raise RuntimeError("CRITICAL ERROR: DATABASE_URL not set in production environment!")
         return 'sqlite:///shk_connect.db'
+
+    # Clean the URL (remove trailing dots, spaces, etc.)
+    url = url.strip().rstrip('.')
+
     if url.startswith('postgres://'):
         return url.replace('postgres://', 'postgresql://', 1)
     return url
