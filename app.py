@@ -154,12 +154,13 @@ def login():
     if request.method == 'POST':
         identifier = request.form.get('email') # This matches the 'name' attribute in your login template
         password = request.form.get('password')
+        remember = True if request.form.get('remember') else False
 
         # Check by Email OR Username
         user = User.query.filter((User.email == identifier) | (User.username == identifier)).first()
 
         if user and user.check_password(password):
-            login_user(user, remember=True)
+            login_user(user, remember=remember)
             return redirect(url_for('chat.index'))
         flash('Invalid User ID or password', 'danger')
     return render_template('login.html', title='Login')
