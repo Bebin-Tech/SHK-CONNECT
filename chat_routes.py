@@ -218,6 +218,9 @@ def upload():
 @chat_bp.route('/create_group', methods=['POST'])
 @login_required
 def create_group():
+    if not current_user.role or current_user.role.name not in ['Admin', 'Owner', 'ED']:
+        return jsonify({'error': 'Unauthorized'}), 403
+
     import string, random
     name = (request.form.get('name') or '').strip()
     desc = (request.form.get('description') or '').strip()

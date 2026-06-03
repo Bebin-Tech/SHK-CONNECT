@@ -9,10 +9,12 @@
     <div class="p-4 border-b bg-white">
       <div class="flex items-center justify-between mb-3">
         <h3 class="text-base font-bold text-shk-navy">Channels</h3>
+        {% if current_user.role and current_user.role.name in ['Admin', 'Owner', 'ED'] %}
         <button onclick="document.getElementById('createChannelModal').classList.remove('hidden')"
                 class="p-1.5 bg-slate-50 text-shk-blue rounded-lg hover:bg-slate-100 transition" title="Create Channel">
           <i data-lucide="plus" class="w-4 h-4"></i>
         </button>
+        {% endif %}
       </div>
       <div class="relative">
         <i data-lucide="search" class="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-300"></i>
