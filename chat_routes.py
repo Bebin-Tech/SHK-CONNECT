@@ -27,7 +27,7 @@ def can_manage_group(group):
     if not current_user.is_authenticated:
         return False
     role_name = current_user.role.name if current_user.role else 'Member'
-    return role_name in ['Admin', 'Owner'] or group.created_by == current_user.id
+    return role_name in ['Admin', 'Owner', 'ED'] or group.created_by == current_user.id
 
 def save_channel_avatar(file):
     if not file or not file.filename:
@@ -246,7 +246,7 @@ def create_group():
 @login_required
 def archive_group(group_id):
     role = current_user.role.name if current_user.role else 'Member'
-    if role not in ['Admin', 'Owner']:
+    if role not in ['Admin', 'Owner', 'ED']:
         return jsonify({'error': 'Unauthorized'}), 403
         
     group = Group.query.get_or_404(group_id)
