@@ -40,15 +40,13 @@ def save_channel_avatar(file):
     file.seek(0, 2)
     size_bytes = file.tell()
     file.seek(0)
-    if size_bytes > MAX_FILE_SIZE_MB * 1024 * 1024:
-        raise ValueError(f'File too large. Max {MAX_FILE_SIZE_MB}MB allowed.')
+    if size_bytes > 2 * 1024 * 1024: # Limit Base64 to 2MB to avoid DB bloat
+        raise ValueError('Image too large for permanent storage. Max 2MB.')
 
-    safe_name = f"{uuid.uuid4().hex}.{ext}"
-    upload_root = current_app.config.get('UPLOAD_FOLDER', os.path.join(current_app.root_path, 'static', 'uploads'))
-    upload_dir = os.path.join(upload_root, 'channel_profiles')
-    os.makedirs(upload_dir, exist_ok=True)
-    file.save(os.path.join(upload_dir, safe_name))
-    return f'/static/uploads/channel_profiles/{safe_name}'
+    import base64
+    img_data = file.read()
+    base64_string = base64.b64encode(img_data).decode('utf-8')
+    return f"data:image/{ext};base64,{base64_string}"
 
 @chat_bp.route('/')
 @chat_bp.route('/<int:group_id>')
@@ -168,7 +166,15 @@ def edit_group(group_id):
     if avatar_url:
         group.avatar_url = avatar_url
 
-    db.session.commit()
+    try:
+        db.session.add(group)
+        db.session.commit()
+        print(f"DEBUG: Channel {group.id} profile updated and committed to DB.")
+    except Exception as e:
+        db.session.rollback()
+        print(f"ERROR: Failed to save channel profile: {e}")
+        return jsonify({'error': 'Failed to save to database'}), 500
+
     return jsonify({
         'success': True,
         'id': group.id,

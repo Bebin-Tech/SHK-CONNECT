@@ -104,6 +104,15 @@ def initialize_database():
     if not env_bool('AUTO_CREATE_DB', True): return
     try:
         with app.app_context():
+            # Ensure the database schema is up-to-date
+            # Attempt to alter the avatar_url column to TEXT for Base64 support
+            try:
+                db.session.execute(text("ALTER TABLE groups ALTER COLUMN avatar_url TYPE TEXT"))
+                db.session.commit()
+                print("Database schema updated: groups.avatar_url is now TEXT.")
+            except Exception:
+                db.session.rollback() # Table might not exist yet or dialect doesn't support this syntax
+
             # Check if we already have roles. If so, we assume DB is initialized.
             inspector = inspect(db.engine)
             if not inspector.has_table("roles"):
