@@ -105,13 +105,14 @@ def initialize_database():
     try:
         with app.app_context():
             # Ensure the database schema is up-to-date
-            # Attempt to alter the avatar_url column to TEXT for Base64 support
+            # Attempt to alter avatar_url and file_url to TEXT for Base64 support
             try:
                 db.session.execute(text("ALTER TABLE groups ALTER COLUMN avatar_url TYPE TEXT"))
+                db.session.execute(text("ALTER TABLE messages ALTER COLUMN file_url TYPE TEXT"))
                 db.session.commit()
-                print("Database schema updated: groups.avatar_url is now TEXT.")
+                print("Database schema updated: Large data columns optimized.")
             except Exception:
-                db.session.rollback() # Table might not exist yet or dialect doesn't support this syntax
+                db.session.rollback()
 
             # Check if we already have roles. If so, we assume DB is initialized.
             inspector = inspect(db.engine)

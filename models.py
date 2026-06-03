@@ -79,7 +79,7 @@ class Message(db.Model):
     is_pinned = db.Column(db.Boolean, default=False)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     message_type = db.Column(db.String(20), default='text') # text, file
-    file_url = db.Column(db.String(255))
+    file_url = db.Column(db.Text) # Changed from String(255) to Text for Base64 support
     
     # Self-referential relationship for replies
     replies = db.relationship('Message', backref=db.backref('parent', remote_side=[id]), lazy=True, cascade="all, delete-orphan")
