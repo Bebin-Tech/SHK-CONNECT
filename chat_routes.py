@@ -37,16 +37,30 @@ def save_channel_avatar(file):
     if ftype != 'image':
         raise ValueError('Please upload an image file.')
 
-    file.seek(0, 2)
-    size_bytes = file.tell()
-    file.seek(0)
-    if size_bytes > 2 * 1024 * 1024: # Limit Base64 to 2MB to avoid DB bloat
-        raise ValueError('Image too large for permanent storage. Max 2MB.')
-
     import base64
-    img_data = file.read()
+    import io
+    from PIL import Image
+
+    # Open image using Pillow
+    img = Image.open(file)
+
+    # If it's a huge image, resize it while maintaining aspect ratio
+    max_size = (800, 800)
+    img.thumbnail(max_size, Image.Resampling.LANCZOS)
+
+    # Compress and convert to Base64
+    buffered = io.BytesIO()
+    # Save as JPEG for better compression if not transparent
+    if img.mode in ("RGBA", "P"):
+        img.save(buffered, format="PNG", optimize=True)
+        fmt = "png"
+    else:
+        img.save(buffered, format="JPEG", quality=85, optimize=True)
+        fmt = "jpeg"
+
+    img_data = buffered.getvalue()
     base64_string = base64.b64encode(img_data).decode('utf-8')
-    return f"data:image/{ext};base64,{base64_string}"
+    return f"data:image/{fmt};base64,{base64_string}"
 
 @chat_bp.route('/')
 @chat_bp.route('/<int:group_id>')
@@ -197,26 +211,47 @@ def upload():
 
     # Store images as Base64 for permanent persistence on Render
     if ftype == 'image':
+        import base64
+        import io
+        from PIL import Image
+
         file.seek(0, 2)
-        size_bytes = file.tell()
+        original_size = file.tell()
         file.seek(0)
 
-        # Limit Base64 images to 4MB to balance persistence vs performance
-        if size_bytes > 4 * 1024 * 1024:
-            return jsonify({'error': 'Image too large. Max 4MB for permanent storage.'}), 400
+        # Allow uploads up to 15MB, but we will compress them
+        if original_size > 15 * 1024 * 1024:
+            return jsonify({'error': 'Image too large. Max 15MB allowed.'}), 400
 
-        import base64
-        img_data = file.read()
-        base64_string = base64.b64encode(img_data).decode('utf-8')
-        file_url = f"data:image/{ext};base64,{base64_string}"
+        try:
+            img = Image.open(file)
 
-        return jsonify({
-            'url': file_url,
-            'type': ftype,
-            'ext': ext,
-            'name': secure_filename(file.filename),
-            'size': size_bytes
-        }), 200
+            # If image is very large, downscale it to a reasonable high-res limit
+            # e.g., max 1920px width/height for chat
+            if max(img.size) > 1920:
+                img.thumbnail((1920, 1920), Image.Resampling.LANCZOS)
+
+            buffered = io.BytesIO()
+            if img.mode in ("RGBA", "P"):
+                img.save(buffered, format="PNG", optimize=True)
+                fmt = "png"
+            else:
+                img.save(buffered, format="JPEG", quality=80, optimize=True)
+                fmt = "jpeg"
+
+            img_data = buffered.getvalue()
+            base64_string = base64.b64encode(img_data).decode('utf-8')
+            file_url = f"data:image/{fmt};base64,{base64_string}"
+
+            return jsonify({
+                'url': file_url,
+                'type': ftype,
+                'ext': fmt,
+                'name': secure_filename(file.filename),
+                'size': len(img_data)
+            }), 200
+        except Exception as e:
+            return jsonify({'error': f'Failed to process image: {str(e)}'}), 500
 
     # For other files (documents/videos), continue using temporary file storage
     file.seek(0, 2)
