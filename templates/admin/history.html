@@ -25,7 +25,7 @@
             <div class="flex items-center justify-between pt-4 border-t border-gray-50">
                 <span class="text-xs font-bold text-gray-400">{{ group.messages|length if group.messages else 0 }} Messages</span>
                 <div class="flex items-center gap-3">
-                    {% if current_user.role and current_user.role.name in ['Admin', 'Owner'] %}
+                    {% if current_user.role and current_user.role.name in ['Admin', 'Owner', 'ED'] %}
                     <a href="{{ url_for('admin.delete_group', group_id=group.id) }}" 
                        onclick="return confirm('Permanently delete this history log?')"
                        class="p-2 bg-red-50 text-red-500 rounded-xl hover:bg-red-100 transition shadow-sm border border-red-100" 

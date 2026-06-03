@@ -27,7 +27,7 @@
             <span class="text-sm font-bold text-[#1A237E]">Transcript Log</span>
         </div>
         <div class="flex items-center gap-3">
-            {% if current_user.role.name in ['Admin', 'Owner'] %}
+            {% if current_user.role.name in ['Admin', 'Owner', 'ED'] %}
             <a href="{{ url_for('admin.delete_group', group_id=group.id) }}" 
                onclick="return confirm('Permanently delete this history log?')"
                class="text-xs font-bold text-red-400 hover:text-red-600 flex items-center gap-1 mr-4">
