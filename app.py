@@ -122,7 +122,9 @@ def initialize_database():
             admin_email = 'admin@shk.com'
             admin_username = 'admin@shk.com'
 
-            if not User.query.filter_by(email=admin_email).first() and not User.query.filter_by(username=admin_username).first():
+            existing_admin = User.query.filter((User.email == admin_email) | (User.username == admin_username)).first()
+
+            if not existing_admin:
                 admin_user = User(
                     username=admin_username,
                     email=admin_email,
@@ -132,6 +134,16 @@ def initialize_database():
                 db.session.add(admin_user)
                 db.session.commit()
                 print(f"Default Admin user created: {admin_email} / admin123")
+            else:
+                # If the admin exists but you can't log in, let's force reset the password to admin123
+                # This ensures the credentials you provided ALWAYS work on startup.
+                existing_admin.set_password("admin123")
+                existing_admin.email = admin_email
+                existing_admin.username = admin_username
+                if admin_role:
+                    existing_admin.role_id = admin_role.id
+                db.session.commit()
+                print(f"Admin account reset/verified: {admin_email} / admin123")
 
             print("Database check/initialization complete.")
     except Exception as e:
@@ -154,16 +166,22 @@ def login():
     if current_user.is_authenticated:
         return redirect(url_for('chat.index'))
     if request.method == 'POST':
-        identifier = request.form.get('email') # This matches the 'name' attribute in your login template
-        password = request.form.get('password')
+        identifier = (request.form.get('email') or '').strip()
+        password = (request.form.get('password') or '').strip()
         remember = True if request.form.get('remember') else False
 
-        # Check by Email OR Username
-        user = User.query.filter((User.email == identifier) | (User.username == identifier)).first()
+        # Case-insensitive check by Email OR Username
+        from sqlalchemy import func
+        user = User.query.filter(
+            (func.lower(User.email) == func.lower(identifier)) |
+            (func.lower(User.username) == func.lower(identifier))
+        ).first()
 
         if user and user.check_password(password):
             login_user(user, remember=remember)
             return redirect(url_for('chat.index'))
+
+        logger.warning(f"Failed login attempt for: {identifier}")
         flash('Invalid User ID or password', 'danger')
     return render_template('login.html', title='Login')
 
