@@ -193,14 +193,38 @@ def upload():
     if not file or file.filename == '':
         return jsonify({'error': 'No file selected'}), 400
 
+    ftype, ext = get_file_type(file.filename)
+
+    # Store images as Base64 for permanent persistence on Render
+    if ftype == 'image':
+        file.seek(0, 2)
+        size_bytes = file.tell()
+        file.seek(0)
+
+        # Limit Base64 images to 4MB to balance persistence vs performance
+        if size_bytes > 4 * 1024 * 1024:
+            return jsonify({'error': 'Image too large. Max 4MB for permanent storage.'}), 400
+
+        import base64
+        img_data = file.read()
+        base64_string = base64.b64encode(img_data).decode('utf-8')
+        file_url = f"data:image/{ext};base64,{base64_string}"
+
+        return jsonify({
+            'url': file_url,
+            'type': ftype,
+            'ext': ext,
+            'name': secure_filename(file.filename),
+            'size': size_bytes
+        }), 200
+
+    # For other files (documents/videos), continue using temporary file storage
     file.seek(0, 2)
     size_bytes = file.tell()
     file.seek(0)
     if size_bytes > MAX_FILE_SIZE_MB * 1024 * 1024:
         return jsonify({'error': f'File too large. Max {MAX_FILE_SIZE_MB}MB allowed.'}), 400
 
-    ftype, ext = get_file_type(file.filename)
-    
     import uuid
     safe_name = f"{uuid.uuid4().hex}.{ext}"
     upload_root = current_app.config.get('UPLOAD_FOLDER', os.path.join(current_app.root_path, 'static', 'uploads'))
