@@ -154,12 +154,16 @@
               <span class="text-[10px] text-slate-400">{{ msg.timestamp.strftime('%b %d, %I:%M %p') }}</span>
             </div>
             {% if msg.message_type == 'file' and msg.file_url %}
-              {% set ext = msg.file_url.rsplit('.',1)[-1].lower() %}
-              {% if ext in ['png','jpg','jpeg','gif','webp'] %}
-              <a href="{{ msg.file_url }}" target="_blank">
-                <img src="{{ msg.file_url }}" class="max-w-full sm:max-w-xs rounded-2xl border border-slate-100 shadow-sm hover:opacity-90 transition cursor-zoom-in mt-1" alt="image">
-              </a>
+              {% set is_img = msg.file_url.startswith('data:image/') or msg.file_url.rsplit('.',1)[-1].lower() in ['png','jpg','jpeg','gif','webp'] %}
+              {% if is_img %}
+              <div class="mt-1">
+                <img src="{{ msg.file_url }}"
+                     onclick="openImageViewer('{{ msg.file_url }}')"
+                     class="max-w-full sm:max-w-xs rounded-2xl border border-slate-100 shadow-sm hover:opacity-90 transition cursor-zoom-in"
+                     alt="image">
+              </div>
               {% else %}
+              {% set ext = msg.file_url.rsplit('.',1)[-1].lower() if '.' in msg.file_url else 'file' %}
               <a href="{{ msg.file_url }}" target="_blank" download
                  class="flex items-center gap-2 p-3 rounded-2xl border border-slate-100 bg-white shadow-sm hover:shadow-md transition mt-1">
                 <div class="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center flex-shrink-0">
@@ -172,7 +176,7 @@
                 <i data-lucide="download" class="w-4 h-4 text-slate-300 flex-shrink-0"></i>
               </a>
               {% endif %}
-            {% else %}
+{% elif msg.content %}
             <div class="p-3 rounded-2xl text-sm shadow-sm
                         {% if is_me %}bg-shk-blue text-white rounded-tr-none{% else %}bg-white text-slate-700 rounded-tl-none border border-slate-100{% endif %}">
               {{ msg.content }}
@@ -367,7 +371,36 @@
   </div>
 </div>
 
+<div id="imageViewerModal" class="fixed inset-0 bg-black/90 backdrop-blur-md z-[100] hidden flex flex-col items-center justify-center p-4" onclick="closeImageViewer()">
+  <button class="absolute top-6 right-6 text-white/70 hover:text-white transition-colors" onclick="closeImageViewer()">
+    <i data-lucide="x" class="w-8 h-8"></i>
+  </button>
+  <div class="max-w-5xl max-h-[85vh] flex items-center justify-center" onclick="event.stopPropagation()">
+    <img id="viewer-img" src="" class="max-w-full max-h-full object-contain rounded-xl shadow-2xl border border-white/10" alt="Preview">
+  </div>
+  <div class="mt-6 flex items-center gap-4" onclick="event.stopPropagation()">
+    <a id="viewer-download" href="" download class="px-6 py-2.5 bg-white text-shk-navy rounded-full font-bold text-sm flex items-center gap-2 hover:bg-slate-100 transition shadow-lg">
+      <i data-lucide="download" class="w-4 h-4"></i> Download Image
+    </a>
+  </div>
+</div>
+
 <script>
+function openImageViewer(url) {
+  const modal = document.getElementById('imageViewerModal');
+  const img = document.getElementById('viewer-img');
+  const download = document.getElementById('viewer-download');
+  img.src = url;
+  download.href = url;
+  modal.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  lucide.createIcons();
+}
+function closeImageViewer() {
+  const modal = document.getElementById('imageViewerModal');
+  modal.classList.add('hidden');
+  document.body.style.overflow = '';
+}
 function toggleChannels() {
   const sidebar = document.getElementById('channel-sidebar');
   const overlay = document.getElementById('channel-overlay');
@@ -585,7 +618,16 @@ function avatarCls(role) {
 }
 function renderAttachment(data) {
   if (!data.file_url) return '';
-  if (data.file_type === 'image') return `<a href="${data.file_url}" target="_blank"><img src="${data.file_url}" class="max-w-full sm:max-w-xs rounded-2xl border shadow-sm hover:opacity-90 transition mt-1"></a>`;
+  const isImg = data.file_url.startsWith('data:image/') || ['PNG','JPG','JPEG','GIF','WEBP'].includes(data.file_url.split('.').pop().toUpperCase());
+
+  if (isImg) {
+    return `<div class="mt-1">
+      <img src="${data.file_url}"
+           onclick="openImageViewer('${data.file_url}')"
+           class="max-w-full sm:max-w-xs rounded-2xl border shadow-sm hover:opacity-90 transition cursor-zoom-in">
+    </div>`;
+  }
+
   const ext = (data.file_name||data.file_url).split('.').pop().toUpperCase();
   return `<a href="${data.file_url}" target="_blank" download class="flex items-center gap-2 p-3 rounded-2xl border bg-white shadow-sm hover:shadow-md transition mt-1"><div class="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0"><i data-lucide="file-text" class="w-4 h-4 text-[#1A237E]"></i></div><div class="min-w-0 flex-1"><p class="text-xs font-bold text-gray-800 truncate">${data.file_name || 'File'}</p><p class="text-[10px] text-gray-400">${ext} · Download</p></div><i data-lucide="download" class="w-4 h-4 text-gray-400 flex-shrink-0"></i></a>`;
 }
