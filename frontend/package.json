@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "vite",
+    "start": "vite",
     "build": "vite build",
     "preview": "vite preview"
   },
@@ -13,10 +14,14 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "@vitejs/plugin-react": "^6.0.2",
-    "react": "^19.2.6",
-    "react-dom": "^19.2.6",
-    "socket.io-client": "^4.8.3",
-    "vite": "^8.0.13"
+    "@vitejs/plugin-react": "^4.2.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.21.0",
+    "socket.io-client": "^4.7.2",
+    "lucide-react": "^0.300.0",
+    "axios": "^1.6.2",
+    "date-fns": "^3.0.0",
+    "vite": "^5.0.0"
   }
 }

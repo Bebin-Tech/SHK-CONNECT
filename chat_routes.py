@@ -39,7 +39,14 @@ def save_channel_avatar(file):
 
     import base64
     import io
-    from PIL import Image
+    try:
+        from PIL import Image
+    except ImportError:
+        # Fallback if Pillow is not installed
+        img_data = file.read()
+        base64_string = base64.b64encode(img_data).decode('utf-8')
+        ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else 'png'
+        return f"data:image/{ext};base64,{base64_string}"
 
     # Open image using Pillow
     img = Image.open(file)
@@ -96,12 +103,7 @@ def index(group_id=None):
     # Sort users by role then name to make management easier
     all_users = User.query.join(Role).order_by(Role.name, User.first_name, User.username).all()
 
-    return render_template('chat/index.html', 
-                           title=group.name if group else 'Team Chat',
-                           groups=groups, 
-                           group=group, 
-                           messages=messages, 
-                           all_users=all_users)
+    return render_template('react_chat.html')
 
 @chat_bp.route('/load_history/<int:group_id>')
 @login_required
@@ -130,6 +132,8 @@ def load_history(group_id):
             'file_type': m.message_type if m.message_type != 'text' else None,
             'replies': [{
                 'username': r.author.username if r.author else 'Unknown',
+                'full_name': r.author.first_name if r.author else None,
+                'role': r.author.role.name if r.author and r.author.role else 'Member',
                 'content': r.content,
                 'timestamp': r.timestamp.strftime('%I:%M %p')
             } for r in m.replies]
@@ -213,7 +217,20 @@ def upload():
     if ftype == 'image':
         import base64
         import io
-        from PIL import Image
+        try:
+            from PIL import Image
+        except ImportError:
+            # Fallback for systems where Pillow (Image library) cannot be installed
+            file.seek(0)
+            img_data = file.read()
+            base64_string = base64.b64encode(img_data).decode('utf-8')
+            return jsonify({
+                'url': f"data:image/{ext};base64,{base64_string}",
+                'type': ftype,
+                'ext': ext,
+                'name': secure_filename(file.filename),
+                'size': len(img_data)
+            }), 200
 
         file.seek(0, 2)
         original_size = file.tell()

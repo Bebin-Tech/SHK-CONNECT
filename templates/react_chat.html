@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SHK Connect</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'shk-navy': '#0e1b42',
+                        'shk-blue': '#517ea2',
+                        'shk-red': '#a61a2e',
+                        'shk-gold': '#e1ad21',
+                        'shk-light': '#f8fafc'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Outfit', sans-serif; background-color: #f8fafc; margin: 0; }
+        #root { height: 100vh; width: 100vw; }
+    </style>
+
+    <script type="module">
+      const VITE_PORT = 5173;
+      const host = window.location.hostname;
+      const urls = [
+        `http://${host}:${VITE_PORT}`,
+        `http://localhost:${VITE_PORT}`,
+        `http://127.0.0.1:${VITE_PORT}`
+      ];
+
+      async function tryLoadVite() {
+        for (const baseUrl of urls) {
+          try {
+            const res = await fetch(`${baseUrl}/src/main.jsx`, { mode: 'no-cors' });
+            console.log(`Vite detected at ${baseUrl}`);
+
+            const s2 = document.createElement('script');
+            s2.type = 'module';
+            s2.innerHTML = `
+              import RefreshRuntime from '${baseUrl}/@react-refresh'
+              RefreshRuntime.injectIntoGlobalHook(window)
+              window.$RefreshReg$ = () => {}
+              window.$RefreshSig$ = () => (type) => type
+              window.__vite_plugin_react_preamble_installed__ = true
+            `;
+            document.head.appendChild(s2);
+
+            const s3 = document.createElement('script');
+            s3.type = 'module';
+            s3.src = `${baseUrl}/src/main.jsx`;
+            document.head.appendChild(s3);
+            return true;
+          } catch (e) {
+            continue;
+          }
+        }
+        return false;
+      }
+
+      tryLoadVite().then(success => {
+        if (!success) {
+          console.warn('Vite dev server not found. Loading production build...');
+          const link = document.createElement('link');
+          link.rel = 'stylesheet';
+          link.href = '/static/dist/assets/index.css';
+          document.head.appendChild(link);
+
+          const script = document.createElement('script');
+          script.type = 'module';
+          script.src = '/static/dist/assets/index.js';
+          document.head.appendChild(script);
+        }
+      });
+    </script>
+</head>
+<body class="text-slate-800">
+    <div id="root">
+        <div class="h-full w-full flex items-center justify-center">
+            <div class="animate-pulse flex flex-col items-center gap-4">
+                <div class="w-12 h-12 bg-slate-200 rounded-full"></div>
+                <p class="text-slate-400 font-medium">Initializing SHK Connect...</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

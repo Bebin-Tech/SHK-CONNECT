@@ -1,12 +1,16 @@
-import eventlet
-eventlet.monkey_patch()
+import sys
 
-# Patch psycopg2 for eventlet if it's installed
-try:
-    from psycogreen.eventlet import patch_psycopg
-    patch_psycopg()
-except ImportError:
-    pass
+# Eventlet monkey patching (skip if running Python 3.13 or newer)
+if sys.version_info.major == 3 and sys.version_info.minor < 13:
+    import eventlet
+    eventlet.monkey_patch()
+
+    # Patch psycopg2 for eventlet if it's installed
+    try:
+        from psycogreen.eventlet import patch_psycopg
+        patch_psycopg()
+    except ImportError:
+        pass
 
 import os
 import sys
@@ -19,6 +23,7 @@ from sqlalchemy import inspect, text
 from models import db, User, Role, Group, Message, Expense, ActivityLog, SupportTicket
 from admin_routes import admin_bp
 from chat_routes import chat_bp
+from api_routes import api_bp
 from socket_handlers import register_socket_handlers
 from dotenv import load_dotenv
 from extensions import socketio
@@ -78,10 +83,15 @@ db.init_app(app)
 migrate = Migrate(app, db)
 
 # Initialize SocketIO with calculated async mode
+async_mode = get_async_mode()
+# Python 3.13+ check: force threading if eventlet is likely to fail
+if sys.version_info.major == 3 and sys.version_info.minor >= 13:
+    async_mode = 'threading'
+
 socketio.init_app(
     app,
     cors_allowed_origins=os.getenv('SOCKETIO_CORS_ORIGINS', '*'),
-    async_mode=get_async_mode(),
+    async_mode=async_mode,
     ping_timeout=60,
     ping_interval=25,
 )
@@ -92,6 +102,7 @@ login_manager.login_view = 'login'
 # Register Blueprints
 app.register_blueprint(admin_bp, url_prefix='/admin')
 app.register_blueprint(chat_bp, url_prefix='/chat')
+app.register_blueprint(api_bp, url_prefix='/api')
 
 # Register Socket Handlers
 register_socket_handlers(socketio)
