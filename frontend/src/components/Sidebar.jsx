@@ -14,74 +14,72 @@ const Sidebar = ({ user, activePath, toggleMobileMenu, isMobileOpen }) => {
   const filteredNav = navItems.filter(item => item.roles.includes(role));
 
   const SidebarContent = () => (
-    <div className="flex flex-col h-full">
-      {/* Logo & Brand */}
-      <div className="px-6 pt-8 pb-6 flex items-center gap-3">
-        <div className="w-12 h-12 flex-shrink-0">
+    <div className="flex flex-col h-full bg-slate-900 text-slate-100">
+      {/* Logo & Brand Header */}
+      <div className="px-6 py-7 flex items-center gap-3 border-b border-slate-800/60">
+        <div className="w-10 h-10 bg-white/10 rounded-xl p-2 flex items-center justify-center backdrop-blur-md shadow-inner border border-white/10">
           <img src="/static/img/shk_logo.png" alt="Logo" className="w-full h-full object-contain" />
         </div>
-        <div>
-          <h1 className="text-[14px] font-black text-shk-navy uppercase tracking-tighter leading-tight">
-            SHK <br /><span className="text-shk-gold">CONNECT</span>
+        <div className="flex-1">
+          <h1 className="text-sm font-black tracking-tight text-white uppercase leading-none">
+            SHK <span className="text-amber-400 font-medium">CONNECT</span>
           </h1>
+          <p className="text-[10px] text-slate-400 mt-0.5 tracking-wider uppercase font-semibold">Workspace</p>
         </div>
         {isMobileOpen && (
-          <button onClick={toggleMobileMenu} className="lg:hidden ml-auto p-2 text-slate-400">
-            <X size={20} />
+          <button onClick={toggleMobileMenu} className="lg:hidden p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white transition">
+            <X size={18} />
           </button>
         )}
       </div>
 
-      {/* Role Badge */}
-      <div className="px-8 pb-4 flex justify-center">
-        <span className={`text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full ${
-          role === 'Admin' ? 'bg-blue-50 text-blue-600' :
-          role === 'Owner' ? 'bg-purple-50 text-purple-600' :
-          role === 'ED' ? 'bg-rose-50 text-rose-600' :
-          role === 'Manager' ? 'bg-amber-50 text-amber-600' :
-          role === 'Accounts' ? 'bg-indigo-50 text-indigo-600' :
-          role === 'Staff' ? 'bg-emerald-50 text-emerald-600' :
-          'bg-slate-100 text-slate-500'
-        }`}>
-          {role === 'Admin' ? '🛡 Admin' :
-           role === 'Owner' ? '👑 Owner' :
-           role === 'ED' ? '👔 ED' :
-           role === 'Manager' ? '💼 Manager' :
-           role === 'Accounts' ? '🧾 Accounts' :
-           role === 'Staff' ? '🛠 Staff' : '👤 Member'}
-        </span>
+      {/* Navigation Layer */}
+      <div className="flex-1 px-4 py-6 overflow-y-auto space-y-7">
+        <div>
+          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-3 mb-3">Navigation</p>
+          <nav className="space-y-1">
+            {filteredNav.map((item) => {
+              const isActive = activePath.startsWith(item.path);
+              return (
+                <a
+                  key={item.path}
+                  href={item.path}
+                  className={`flex items-center gap-3 px-3 py-3 rounded-xl font-medium text-sm transition-all duration-200 group relative ${
+                    isActive
+                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-600/10 border border-blue-500/20'
+                      : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'
+                  }`}
+                >
+                  <item.icon size={18} className={`transition-transform duration-200 ${isActive ? 'scale-105' : 'group-hover:scale-105 text-slate-500 group-hover:text-slate-300'}`} />
+                  <span>{item.label}</span>
+                  {isActive && <span className="absolute right-3 w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}
+                </a>
+              );
+            })}
+          </nav>
+        </div>
       </div>
 
-      {/* Navigation */}
-      <nav className="px-6 flex-1 space-y-1">
-        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 px-2">Navigation</p>
-        {filteredNav.map((item) => (
-          <a
-            key={item.path}
-            href={item.path}
-            className={`flex items-center gap-3 p-4 rounded-2xl transition font-semibold text-sm ${
-              activePath.startsWith(item.path) ? 'bg-shk-blue text-white shadow-md' : 'text-slate-600 hover:bg-slate-50 hover:text-shk-blue'
-            }`}
-          >
-            <item.icon size={20} />
-            <span>{item.label}</span>
-          </a>
-        ))}
-      </nav>
-
-      {/* Profile & Logout */}
-      <div className="p-6 border-t border-slate-100">
-        <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-100">
+      {/* User Profile Footer Footer */}
+      <div className="p-4 border-t border-slate-800/60 bg-slate-950/40 backdrop-blur-md">
+        <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-800/40 border border-slate-800">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 bg-shk-blue text-white rounded-xl flex items-center justify-center font-bold text-sm flex-shrink-0">
+            <div className="w-9 h-9 bg-gradient-to-tr from-blue-500 to-indigo-600 text-white rounded-lg flex items-center justify-center font-bold text-sm shadow-md ring-2 ring-white/10 flex-shrink-0">
               {user?.username?.[0]?.toUpperCase()}
             </div>
             <div className="overflow-hidden">
-              <p className="text-sm font-bold text-shk-navy truncate">{user?.username}</p>
-              <p className="text-[10px] text-slate-400 truncate uppercase tracking-widest font-bold">{role}</p>
+              <p className="text-sm font-bold text-white truncate leading-snug">{user?.username}</p>
+              <span className={`inline-block text-[9px] font-extrabold uppercase tracking-wider mt-0.5 px-1.5 py-0.5 rounded-md ${
+                role === 'Admin' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' :
+                role === 'Owner' ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' :
+                role === 'ED' ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' :
+                'bg-slate-700/50 text-slate-400 border border-slate-700'
+              }`}>
+                {role}
+              </span>
             </div>
           </div>
-          <a href="/logout" className="p-2 text-slate-400 hover:text-shk-red hover:bg-rose-50 rounded-lg transition-all">
+          <a href="/logout" className="p-2 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all duration-200" title="Sign Out">
             <LogOut size={16} />
           </a>
         </div>
@@ -92,13 +90,13 @@ const Sidebar = ({ user, activePath, toggleMobileMenu, isMobileOpen }) => {
   return (
     <>
       {/* Desktop Sidebar */}
-      <aside className="w-72 bg-white border-r border-slate-100 hidden lg:flex flex-col z-10 h-screen sticky top-0">
+      <aside className="w-64 bg-slate-900 hidden lg:flex flex-col z-10 h-screen sticky top-0 border-r border-slate-800/40">
         <SidebarContent />
       </aside>
 
-      {/* Mobile Sidebar */}
-      <div className={`fixed inset-0 bg-slate-900/40 z-40 lg:hidden transition-opacity duration-300 ${isMobileOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} onClick={toggleMobileMenu} />
-      <aside className={`fixed inset-y-0 left-0 w-72 bg-white z-50 lg:hidden transform transition-transform duration-300 flex flex-col ${isMobileOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      {/* Mobile Sidebar Slider */}
+      <div className={`fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-40 lg:hidden transition-opacity duration-300 ${isMobileOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} onClick={toggleMobileMenu} />
+      <aside className={`fixed inset-y-0 left-0 w-64 bg-slate-900 z-50 lg:hidden transform transition-transform duration-300 shadow-2xl flex flex-col ${isMobileOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <SidebarContent />
       </aside>
     </>

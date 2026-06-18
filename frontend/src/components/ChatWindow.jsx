@@ -1,11 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, Paperclip, X, CornerUpRight, Download, Users, Settings2, Link, Archive, MessageCircle } from 'lucide-react';
+import axios from 'axios';
 import Message from './Message';
+import ChannelProfileModal from './ChannelProfileModal';
+import ConnectUsersModal from './ConnectUsersModal';
 
 const ChatWindow = ({ group, user, messages, onSendMessage, onUploadFile, onLoadHistory, typingUser, canManage }) => {
   const [input, setInput] = useState('');
   const [replyTo, setReplyTo] = useState(null);
   const [pendingFile, setPendingFile] = useState(null);
+
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isConnectModalOpen, setIsConnectModalOpen] = useState(false);
+
   const containerRef = useRef(null);
   const fileInputRef = useRef(null);
 
@@ -77,18 +84,48 @@ const ChatWindow = ({ group, user, messages, onSendMessage, onUploadFile, onLoad
           </span>
           {canManage && (
             <>
-              <button className="p-2 bg-slate-50 text-shk-blue rounded-xl hover:bg-slate-100 transition border border-slate-100 flex items-center gap-2">
+              <button
+                onClick={() => setIsProfileModalOpen(true)}
+                className="p-2 bg-slate-50 text-shk-blue rounded-xl hover:bg-slate-100 transition border border-slate-100 flex items-center gap-2"
+              >
                 <Settings2 size={16} />
                 <span className="hidden sm:inline text-xs font-bold uppercase tracking-wider">Edit</span>
               </button>
-              <button className="p-2 bg-slate-50 text-shk-blue rounded-xl hover:bg-slate-100 transition border border-slate-100 flex items-center gap-2">
+              <button
+                onClick={() => setIsConnectModalOpen(true)}
+                className="p-2 bg-slate-50 text-shk-blue rounded-xl hover:bg-slate-100 transition border border-slate-100 flex items-center gap-2"
+              >
                 <Link size={16} />
                 <span className="hidden sm:inline text-xs font-bold uppercase tracking-wider">Connect</span>
+              </button>
+              <button
+                onClick={async () => {
+                  if(confirm('Archive this channel?')) {
+                    await axios.post(`/chat/archive_group/${group.id}`);
+                  }
+                }}
+                className="p-2 bg-rose-50 text-shk-red rounded-xl hover:bg-rose-100 transition border border-rose-100"
+              >
+                <Archive size={16} />
               </button>
             </>
           )}
         </div>
       </header>
+
+      {/* Modals */}
+      <ChannelProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        group={group}
+        onUpdate={() => window.location.reload()}
+      />
+      <ConnectUsersModal
+        isOpen={isConnectModalOpen}
+        onClose={() => setIsConnectModalOpen(false)}
+        groupId={group.id}
+        currentMembers={[]} // In a real app, you'd pass actual member objects
+      />
 
       {/* Message Container */}
       <div
