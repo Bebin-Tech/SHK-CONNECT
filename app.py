@@ -38,8 +38,7 @@ app = Flask(__name__)
 
 def normalize_database_url(url):
     if not url:
-        if os.getenv('FLASK_ENV') == 'production':
-            raise RuntimeError("CRITICAL ERROR: DATABASE_URL not set in production environment!")
+        logger.warning("!!! WARNING: DATABASE_URL not found. Using local SQLite. Data will NOT persist on cloud restarts! !!!")
         return 'sqlite:///shk_connect.db'
 
     # Clean the URL (remove trailing dots, spaces, etc.)

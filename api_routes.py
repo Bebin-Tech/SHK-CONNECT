@@ -1,6 +1,6 @@
-from flask import Blueprint, jsonify, abort
+from flask import Blueprint, jsonify, abort, request
 from flask_login import current_user
-from models import User, Group, Role
+from models import User, Group, Role, Expense, ActivityLog, db
 
 api_bp = Blueprint('api', __name__)
 
@@ -54,3 +54,40 @@ def get_users():
         'first_name': u.first_name,
         'role': u.role.name if u.role else 'Member'
     } for u in all_users])
+
+@api_bp.route('/expenses')
+@json_login_required
+def get_expenses():
+    role_name = current_user.role.name if current_user.role else 'Member'
+    if role_name in ['Admin', 'Owner', 'Accounts']:
+        expenses = Expense.query.order_by(Expense.bill_date.desc()).all()
+    else:
+        expenses = Expense.query.filter_by(user_id=current_user.id).order_by(Expense.bill_date.desc()).all()
+    
+    return jsonify([{
+        'id': e.id,
+        'amount': e.amount,
+        'category': e.category,
+        'description': e.description,
+        'status': e.status,
+        'type': e.type,
+        'bill_date': e.bill_date.strftime('%Y-%m-%d'),
+        'username': e.user.username if e.user else 'Unknown',
+        'is_paid': e.is_paid
+    } for e in expenses])
+
+@api_bp.route('/activity_logs')
+@json_login_required
+def get_activity_logs():
+    if not current_user.role or current_user.role.name not in ['Admin', 'Owner']:
+        return jsonify({'error': 'Unauthorized'}), 403
+        
+    logs = ActivityLog.query.order_by(ActivityLog.timestamp.desc()).limit(100).all()
+    return jsonify([{
+        'id': l.id,
+        'action': l.action,
+        'details': l.details,
+        'username': l.user.username if l.user else 'System',
+        'timestamp': l.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+        'ip_address': l.ip_address
+    } for l in logs])

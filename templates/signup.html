@@ -3,81 +3,125 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Create Account - SHK Connect</title>
+    <title>Enrollment - SHK Connect</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { outfit: ['Outfit', 'sans-serif'] },
+                    colors: {
+                        'shk-navy': '#0e1b42',
+                        'shk-blue': '#517ea2',
+                        'shk-red': '#a61a2e',
+                        'shk-gold': '#e1ad21',
+                    }
+                }
+            }
+        }
+    </script>
     <style>
         body { 
             font-family: 'Outfit', sans-serif; 
-            background: radial-gradient(circle at top right, #FDFCFB 0%, #E2D1C3 100%),
-                        radial-gradient(circle at bottom left, #E3F2FD, #BBDEFB);
-            background: radial-gradient(circle at 20% 20%, rgba(26, 35, 126, 0.05), transparent),
-                        radial-gradient(circle at 80% 80%, rgba(212, 175, 55, 0.1), transparent),
-                        linear-gradient(135deg, #FFFFFF 0%, #F5F7FA 100%);
-            background-attachment: fixed;
-            min-height: screen;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 1.5rem;
+            background: #f8fafc;
+            overflow: hidden;
         }
-        .glass-card {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+        .animate-float {
+            animation: float 6s ease-in-out infinite;
+        }
+        @keyframes float {
+            0% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(2deg); }
+            100% { transform: translateY(0px) rotate(0deg); }
         }
     </style>
 </head>
-<body class="p-6 relative">
-    <!-- Top Left Branding -->
-    <div class="absolute top-6 left-8 flex items-center gap-6 z-20">
-        <div class="w-24 h-24 transform hover:scale-110 transition-all duration-500">
-            <img src="{{ url_for('static', filename='img/shk_logo_new.png') }}" alt="Logo" class="w-full h-full object-contain filter drop-shadow-md">
-        </div>
-        <h1 class="text-xl font-black text-[#1A237E] tracking-tighter uppercase">
-            SHK <span class="text-[#D4AF37]">CONNECT</span>
-        </h1>
+<body class="min-h-screen flex items-center justify-center p-4">
+    <!-- Abstract Background Decorations -->
+    <div class="fixed inset-0 pointer-events-none overflow-hidden">
+        <div class="absolute -bottom-24 -left-24 w-96 h-96 bg-blue-600/5 rounded-full blur-3xl animate-float"></div>
+        <div class="absolute top-1/4 -right-24 w-80 h-80 bg-rose-600/5 rounded-full blur-3xl animate-float" style="animation-delay: -2s"></div>
+        <div class="absolute -top-24 left-1/3 w-64 h-64 bg-shk-gold/5 rounded-full blur-3xl animate-float" style="animation-delay: -4s"></div>
     </div>
 
-    <div class="glass-card p-10 rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.15)] w-full relative z-10" style="max-width: 450px;">
-        <div class="text-center mb-8">
-            <h2 class="text-3xl font-bold text-[#1A237E]">Join SHK</h2>
-            <p class="text-gray-400 text-sm mt-2 font-medium">Create your corporate account</p>
+    <div class="w-full max-w-[520px] relative z-10">
+        <!-- Logo Branding -->
+        <div class="flex flex-col items-center mb-10">
+            <div class="w-16 h-16 bg-white rounded-2xl shadow-2xl shadow-blue-600/10 flex items-center justify-center p-3 mb-4 border border-slate-100 -rotate-3 hover:rotate-0 transition-transform duration-500">
+                <img src="{{ url_for('static', filename='img/shk_logo.png') }}" alt="Logo" class="w-full h-full object-contain">
+            </div>
+            <h1 class="text-lg font-black text-shk-navy tracking-tighter uppercase leading-none text-center">
+                SHK <span class="text-shk-gold">CONNECT</span>
+            </h1>
         </div>
 
-        <!-- Flash Messages -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-          {% if messages %}
-            {% for category, message in messages %}
-              <div class="p-3 rounded-xl text-sm mb-4 border text-center {% if category == 'danger' %}bg-rose-50 text-rose-600 border-rose-100{% else %}bg-blue-50 text-blue-600 border-blue-100{% endif %}">
-                {{ message }}
-              </div>
-            {% endfor %}
-          {% endif %}
-        {% endwith %}
+        <!-- Enrollment Card -->
+        <div class="bg-white rounded-[3rem] shadow-2xl shadow-slate-900/5 border border-slate-100/50 p-8 sm:p-12 relative overflow-hidden">
+            <div class="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-shk-gold to-amber-600"></div>
 
-        <form action="{{ url_for('signup') }}" method="POST" class="space-y-6">
-            <div>
-                <label class="block text-sm font-semibold mb-2 text-gray-700">Full Name</label>
-                <input type="text" name="username" class="w-full p-4 border border-gray-200 rounded-xl outline-none focus:border-[#1A237E] focus:ring-1 focus:ring-[#1A237E] transition-all" placeholder="John Doe" required>
+            <div class="mb-10 text-center sm:text-left">
+                <h2 class="text-3xl font-black text-slate-900 tracking-tight">Request Enrollment</h2>
+                <p class="text-slate-400 font-medium mt-1">Register your identity to join the SHK network.</p>
             </div>
-            <div>
-                <label class="block text-sm font-semibold mb-2 text-gray-700">Work Email</label>
-                <input type="email" name="email" class="w-full p-4 border border-gray-200 rounded-xl outline-none focus:border-[#1A237E] focus:ring-1 focus:ring-[#1A237E] transition-all" placeholder="name@shkindustries.com" required>
-            </div>
-            <div>
-                <label class="block text-sm font-semibold mb-2 text-gray-700">Secure Password</label>
-                <input type="password" name="password" class="w-full p-4 border border-gray-200 rounded-xl outline-none focus:border-[#1A237E] focus:ring-1 focus:ring-[#1A237E] transition-all" placeholder="••••••••" required>
-            </div>
-            
-            <button type="submit" class="w-full bg-[#1A237E] text-white p-4 rounded-xl font-bold hover:bg-[#3949AB] transition shadow-lg hover:shadow-indigo-500/30 transform hover:-translate-y-0.5 active:translate-y-0">
-                CREATE ACCOUNT
-            </button>
-        </form>
 
-        <p class="text-center mt-8 text-gray-500 text-sm">
-            Already have an account? <a href="{{ url_for('login') }}" class="text-[#1A237E] font-bold hover:underline cursor-pointer">Sign In</a>
-        </p>
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+              {% if messages %}
+                {% for category, message in messages %}
+                  <div class="mb-6 p-4 rounded-2xl flex items-center gap-3 {% if category == 'success' %}bg-emerald-50 text-emerald-600 border border-emerald-100{% else %}bg-rose-50 text-rose-600 border border-rose-100{% endif %} animate-in fade-in slide-in-from-top-2">
+                    <span class="text-xs font-bold">{{ message }}</span>
+                  </div>
+                {% endfor %}
+              {% endif %}
+            {% endwith %}
+
+            <form action="{{ url_for('signup') }}" method="POST" class="space-y-6">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div class="space-y-2">
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Alias / Username</label>
+                        <input type="text" name="username"
+                               class="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-900 outline-none focus:bg-white focus:border-blue-500/30 focus:ring-4 focus:ring-blue-500/5 transition-all placeholder:text-slate-300"
+                               placeholder="j.doe" required>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Assigned Role</label>
+                        <div class="w-full px-5 py-4 bg-slate-100 border border-slate-200 rounded-2xl text-xs font-black text-slate-400 uppercase tracking-widest cursor-not-allowed flex items-center justify-between">
+                            Member
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Official Email Artifact</label>
+                    <input type="email" name="email"
+                           class="w-full px-6 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-900 outline-none focus:bg-white focus:border-blue-500/30 focus:ring-4 focus:ring-blue-500/5 transition-all placeholder:text-slate-300"
+                           placeholder="name@shk.com" required>
+                </div>
+
+                <div class="space-y-2">
+                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Define Security Key</label>
+                    <input type="password" name="password"
+                           class="w-full px-6 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-900 outline-none focus:bg-white focus:border-blue-500/30 focus:ring-4 focus:ring-blue-500/5 transition-all placeholder:text-slate-300"
+                           placeholder="••••••••" required>
+                </div>
+
+                <button type="submit" class="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-black transition-all shadow-xl shadow-slate-900/10 active:scale-[0.98] mt-4">
+                    Submit Enrollment
+                </button>
+            </form>
+
+            <div class="mt-10 pt-8 border-t border-slate-100 text-center">
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                    Already enrolled? <a href="{{ url_for('login') }}" class="text-blue-600 hover:text-blue-700 ml-1">Establish Sync</a>
+                </p>
+            </div>
+        </div>
+
+        <p class="text-center mt-10 text-[10px] font-black text-slate-300 uppercase tracking-[0.4em]">Identity Protocol v2.0</p>
     </div>
 </body>
 </html>

@@ -1,12 +1,18 @@
 import React from 'react';
-import { MessageCircle, LayoutDashboard, Archive, Users, LogOut, X } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
+import { MessageCircle, LayoutDashboard, Archive, Users, LogOut, X, LifeBuoy, CreditCard, Terminal } from 'lucide-react';
 
-const Sidebar = ({ user, activePath, toggleMobileMenu, isMobileOpen }) => {
+const Sidebar = ({ user, toggleMobileMenu, isMobileOpen }) => {
   const role = user?.role || 'Member';
+  const location = useLocation();
+  const activePath = location.pathname;
 
   const navItems = [
     { icon: MessageCircle, label: 'Team Chat', path: '/chat', roles: ['Admin', 'Owner', 'ED', 'Manager', 'Accounts', 'Staff', 'Member'] },
     { icon: Archive, label: 'History', path: '/history', roles: ['Admin', 'Owner', 'ED', 'Manager', 'Accounts', 'Staff', 'Member'] },
+    { icon: CreditCard, label: 'Ledger', path: '/expenses', roles: ['Admin', 'Owner', 'Accounts'] },
+    { icon: LifeBuoy, label: 'Support Desk', path: '/tickets', roles: ['Admin', 'Owner', 'ED', 'Manager', 'Accounts', 'Staff', 'Member'] },
+    { icon: Terminal, label: 'Security Logs', path: '/logs', roles: ['Admin', 'Owner'] },
     { icon: Users, label: 'User Directory', path: '/users', roles: ['Admin'] },
     { icon: LayoutDashboard, label: 'Admin Center', path: '/admin', roles: ['Admin', 'Owner', 'ED'] },
   ];
@@ -41,9 +47,10 @@ const Sidebar = ({ user, activePath, toggleMobileMenu, isMobileOpen }) => {
             {filteredNav.map((item) => {
               const isActive = activePath.startsWith(item.path);
               return (
-                <a
+                <Link
                   key={item.path}
-                  href={item.path}
+                  to={item.path}
+                  onClick={() => isMobileOpen && toggleMobileMenu()}
                   className={`flex items-center gap-3 px-3 py-3 rounded-xl font-medium text-sm transition-all duration-200 group relative ${
                     isActive
                       ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-600/10 border border-blue-500/20'
@@ -53,17 +60,17 @@ const Sidebar = ({ user, activePath, toggleMobileMenu, isMobileOpen }) => {
                   <item.icon size={18} className={`transition-transform duration-200 ${isActive ? 'scale-105' : 'group-hover:scale-105 text-slate-500 group-hover:text-slate-300'}`} />
                   <span>{item.label}</span>
                   {isActive && <span className="absolute right-3 w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}
-                </a>
+                </Link>
               );
             })}
           </nav>
         </div>
       </div>
 
-      {/* User Profile Footer Footer */}
+      {/* User Profile Footer */}
       <div className="p-4 border-t border-slate-800/60 bg-slate-950/40 backdrop-blur-md">
         <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-800/40 border border-slate-800">
-          <div className="flex items-center gap-3 min-w-0">
+          <Link to="/profile" className="flex items-center gap-3 min-w-0 hover:opacity-80 transition-opacity">
             <div className="w-9 h-9 bg-gradient-to-tr from-blue-500 to-indigo-600 text-white rounded-lg flex items-center justify-center font-bold text-sm shadow-md ring-2 ring-white/10 flex-shrink-0">
               {user?.username?.[0]?.toUpperCase()}
             </div>
@@ -78,7 +85,7 @@ const Sidebar = ({ user, activePath, toggleMobileMenu, isMobileOpen }) => {
                 {role}
               </span>
             </div>
-          </div>
+          </Link>
           <a href="/logout" className="p-2 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all duration-200" title="Sign Out">
             <LogOut size={16} />
           </a>
