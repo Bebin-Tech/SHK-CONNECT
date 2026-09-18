@@ -1,17 +1,20 @@
+import RecordForm from '../components/RecordForm';
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { LifeBuoy, Plus, Search, Filter, AlertCircle, CheckCircle2, Clock, MoreHorizontal, MessageSquare, ChevronRight } from 'lucide-react';
 
 const SupportTickets = () => {
   const [tickets, setTickets] = useState([]);
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
   const [search, setSearch] = useState('');
 
   useEffect(() => {
     axios.get('/admin/tickets').then(res => {
       setTickets(res.data);
       setLoading(false);
-    });
+    }).catch(() => { setError('Unable to load this page. Check your access and try again.'); setLoading(false); });
   }, []);
 
   const getStatusStyle = (status) => {
@@ -33,9 +36,12 @@ const SupportTickets = () => {
   };
 
   const filteredTickets = tickets.filter(t =>
+    t.priority.toLowerCase().includes(search.toLowerCase()) ||
     t.subject.toLowerCase().includes(search.toLowerCase()) ||
     t.username.toLowerCase().includes(search.toLowerCase())
   );
+
+  if (error) return <div role="alert" className="p-8 text-red-600">{error}</div>;
 
   if (loading) return (
     <div className="flex-1 flex items-center justify-center">
@@ -44,7 +50,8 @@ const SupportTickets = () => {
   );
 
   return (
-    <div className="p-6 lg:p-10 bg-slate-50 min-h-full overflow-y-auto">
+    <div className="p-6 lg:p-10 bg-slate-50 h-full min-h-0 overflow-y-auto">
+      {creating && <RecordForm title="New Ticket" fields={[{name:'subject',label:'Subject'},{name:'description',label:'Description'},{name:'priority',label:'Priority',options:['medium','low','high']}]} onClose={() => setCreating(false)} onSubmit={async data => { await axios.post('/admin/tickets', data); const res = await axios.get('/admin/tickets'); setTickets(res.data); }} />}
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-3">
@@ -52,7 +59,7 @@ const SupportTickets = () => {
           </h1>
           <p className="text-sm text-slate-500 font-medium mt-1">Track and resolve user requests and platform issues.</p>
         </div>
-        <button className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 transition shadow-lg active:scale-95">
+        <button onClick={() => setCreating(true)} className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 transition shadow-lg active:scale-95">
           <Plus size={18} /> New Ticket
         </button>
       </div>
@@ -71,7 +78,7 @@ const SupportTickets = () => {
                 className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-bold outline-none focus:border-indigo-500/30 focus:ring-4 focus:ring-indigo-500/5 transition-all shadow-sm"
               />
             </div>
-            <button className="p-3 bg-white border border-slate-200 rounded-2xl text-slate-400 hover:text-indigo-600 hover:border-indigo-100 transition-all shadow-sm">
+            <button disabled title="Advanced filters are not available yet" className="p-3 bg-white border border-slate-200 rounded-2xl text-slate-400 hover:text-indigo-600 hover:border-indigo-100 transition-all shadow-sm">
               <Filter size={20} />
             </button>
           </div>
@@ -104,10 +111,10 @@ const SupportTickets = () => {
                       <div className="w-6 h-6 rounded-full bg-slate-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-slate-500 uppercase">{t.username[0]}</div>
                       <div className="w-6 h-6 rounded-full bg-indigo-600 border-2 border-white flex items-center justify-center text-[10px] font-bold text-white uppercase">A</div>
                     </div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">2 Replies</span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Support request</span>
                   </div>
-                  <button className="flex items-center gap-1 text-[10px] font-black text-indigo-600 uppercase tracking-widest hover:translate-x-1 transition-transform">
-                    Resolve <ChevronRight size={14} />
+                  <button disabled={t.status === 'closed'} onClick={async () => { try { await axios.post(`/admin/tickets/${t.id}/resolve`); setTickets(prev => prev.map(item => item.id === t.id ? {...item,status:'closed'} : item)); } catch { alert('Unable to resolve ticket'); } }} className="flex items-center gap-1 text-[10px] font-black text-indigo-600 uppercase tracking-widest hover:translate-x-1 transition-transform">
+                    {t.status === 'closed' ? 'Resolved' : 'Resolve'} <ChevronRight size={14} />
                   </button>
                 </div>
               </div>
@@ -133,7 +140,7 @@ const SupportTickets = () => {
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-bold text-slate-600">Avg. Response Time</span>
-                  <span className="text-xs font-black text-indigo-600">2.4h</span>
+                  <span className="text-xs font-black text-indigo-600">Not measured</span>
                 </div>
                 <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
                   <div className="h-full bg-indigo-500 rounded-full w-[85%]" />
@@ -142,7 +149,7 @@ const SupportTickets = () => {
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-bold text-slate-600">Resolution Rate</span>
-                  <span className="text-xs font-black text-emerald-600">98%</span>
+                  <span className="text-xs font-black text-emerald-600">{tickets.length ? Math.round(tickets.filter(t => t.status === 'closed').length / tickets.length * 100) : 0}%</span>
                 </div>
                 <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
                   <div className="h-full bg-emerald-500 rounded-full w-[98%]" />
@@ -157,8 +164,8 @@ const SupportTickets = () => {
                 <AlertCircle size={20} className="text-white" />
               </div>
               <h4 className="text-lg font-black tracking-tight mb-2">High Priority Alerts</h4>
-              <p className="text-indigo-300 text-sm font-medium mb-4">There are currently 0 unassigned high-priority tickets.</p>
-              <button className="w-full py-3 bg-white text-indigo-900 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-indigo-50 transition-colors">
+              <p className="text-indigo-300 text-sm font-medium mb-4">There are currently {tickets.filter(t => t.priority === 'high' && t.status !== 'closed').length} open high-priority tickets.</p>
+              <button onClick={() => setSearch('high')} className="w-full py-3 bg-white text-indigo-900 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-indigo-50 transition-colors">
                 Audit Critical
               </button>
             </div>

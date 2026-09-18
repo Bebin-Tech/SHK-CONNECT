@@ -1,9 +1,10 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_required, current_user
-from models import db, User, Role, Group, Message, ActivityLog, SupportTicket
+from models import db, User, Role, Group, SupportTicket
 from functools import wraps
-from datetime import datetime
+from datetime import datetime, timezone
 from extensions import socketio
+from socket_handlers import disconnect_user
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -13,6 +14,8 @@ def management_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not current_user.is_authenticated or not current_user.role or current_user.role.name not in ['Admin', 'Owner', 'ED']:
+            if request.accept_mimetypes.best == 'application/json':
+                return jsonify({'error': 'Access denied'}), 403
             flash('Access denied. Management privileges required.', 'danger')
             return redirect(url_for('chat.index'))
         return f(*args, **kwargs)
@@ -22,6 +25,8 @@ def admin_only_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not current_user.is_authenticated or not current_user.role or current_user.role.name != 'Admin':
+            if request.accept_mimetypes.best == 'application/json':
+                return jsonify({'error': 'Access denied'}), 403
             flash('Access denied. Administrator privileges required.', 'danger')
             return redirect(url_for('chat.index'))
         return f(*args, **kwargs)
@@ -36,15 +41,16 @@ def get_stats():
     from models import Expense
     active_groups = Group.query.filter_by(is_archived=False).all()
     user_count = User.query.count()
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
     start_of_month = datetime(now.year, now.month, 1)
+    next_month = datetime(now.year + (now.month == 12), now.month % 12 + 1, 1)
     
     monthly_credit = db.session.query(db.func.sum(Expense.amount)).filter(
-        Expense.type == 'credit', Expense.bill_date >= start_of_month
+        Expense.type == 'credit', Expense.bill_date >= start_of_month, Expense.bill_date < next_month
     ).scalar() or 0
     
     monthly_debit = db.session.query(db.func.sum(Expense.amount)).filter(
-        Expense.type == 'debit', Expense.bill_date >= start_of_month
+        Expense.type == 'debit', Expense.bill_date >= start_of_month, Expense.bill_date < next_month
     ).scalar() or 0
     
     return jsonify({
@@ -69,15 +75,16 @@ def index():
     from models import Expense
     active_groups = Group.query.filter_by(is_archived=False).all()
     user_count = User.query.count()
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
     start_of_month = datetime(now.year, now.month, 1)
+    next_month = datetime(now.year + (now.month == 12), now.month % 12 + 1, 1)
     
     monthly_credit = db.session.query(db.func.sum(Expense.amount)).filter(
-        Expense.type == 'credit', Expense.bill_date >= start_of_month
+        Expense.type == 'credit', Expense.bill_date >= start_of_month, Expense.bill_date < next_month
     ).scalar() or 0
     
     monthly_debit = db.session.query(db.func.sum(Expense.amount)).filter(
-        Expense.type == 'debit', Expense.bill_date >= start_of_month
+        Expense.type == 'debit', Expense.bill_date >= start_of_month, Expense.bill_date < next_month
     ).scalar() or 0
     
     stats = {
@@ -86,7 +93,7 @@ def index():
         'monthly_credit': round(monthly_credit, 2),
         'monthly_debit': round(monthly_debit, 2)
     }
-    return render_template('admin/dashboard.html', title='Admin Command Center', groups=active_groups, stats=stats)
+    return render_template('react_chat.html')
 
 
 # ─── User Management (Admin only) ─────────────────────────────────────────────
@@ -103,21 +110,25 @@ def users():
 @login_required
 @admin_only_required
 def create_user():
-    name = request.form.get('name')
-    username = request.form.get('username')
-    email = request.form.get('email')
+    name = (request.form.get('name') or '').strip()
+    username = (request.form.get('username') or '').strip()
+    email = (request.form.get('email') or '').strip()
     password = request.form.get('password')
     role_id = request.form.get('role_id')
 
-    if not username or not email or not password:
+    if not username or len(username) > 100 or '@' not in email or len(email) > 120 or not password or len(name) > 100:
         flash('Missing required fields.', 'danger')
         return redirect(url_for('admin.users'))
 
-    if User.query.filter_by(email=email).first():
+    if User.query.filter((db.func.lower(User.email).in_([email.lower(), username.lower()])) |
+                         (db.func.lower(User.username).in_([email.lower(), username.lower()]))).first():
         flash('Email already exists.', 'danger')
         return redirect(url_for('admin.users'))
     
-    user = User(username=username, email=email, role_id=role_id, first_name=name)
+    if not role_id or not role_id.isdigit() or not db.session.get(Role, int(role_id)):
+        flash('Select a valid role.', 'danger')
+        return redirect(url_for('admin.users'))
+    user = User(username=username, email=email, role_id=int(role_id), first_name=name)
     user.set_password(password)
     db.session.add(user)
     db.session.commit()
@@ -132,31 +143,36 @@ def edit_user(user_id):
     name     = request.form.get('name', '').strip()
     username = request.form.get('username', '').strip()
     email    = request.form.get('email', '').strip()
-    password = request.form.get('password', '').strip()
+    password = request.form.get('password', '')
     role_id  = request.form.get('role_id')
 
+    # Validate the complete edit before mutating ORM objects. Audit logging may
+    # commit the request session even when validation redirects back to the form.
+    proposed_username = username or user.username
+    proposed_email = email or user.email
+    if User.query.filter(User.id != user.id).filter(
+        (db.func.lower(User.username).in_([proposed_username.lower(), proposed_email.lower()])) |
+        (db.func.lower(User.email).in_([proposed_username.lower(), proposed_email.lower()]))
+    ).first():
+        flash('Username or email already in use.', 'danger')
+        return redirect(url_for('admin.users'))
+    if len(proposed_username) > 100 or len(proposed_email) > 120 or '@' not in proposed_email or len(name) > 100:
+        flash('Enter a valid username, email and name.', 'danger')
+        return redirect(url_for('admin.users'))
+    if role_id and (not role_id.isdigit() or not db.session.get(Role, int(role_id))):
+        flash('Select a valid role.', 'danger')
+        return redirect(url_for('admin.users'))
     if name:
         user.first_name = name
-
-    if username and username != user.username:
-        if User.query.filter_by(username=username).first():
-            flash('Username already taken.', 'danger')
-            return redirect(url_for('admin.users'))
-        user.username = username
-
-    if email and email != user.email:
-        if User.query.filter_by(email=email).first():
-            flash('Email already in use.', 'danger')
-            return redirect(url_for('admin.users'))
-        user.email = email
-
+    user.username = proposed_username
+    user.email = proposed_email
     if password:
         user.set_password(password)
-
     if role_id:
-        user.role_id = role_id
+        user.role_id = int(role_id)
 
     db.session.commit()
+    disconnect_user(socketio, user.id)
     flash(f'User {user.username} updated successfully.', 'success')
     return redirect(url_for('admin.users'))
 
@@ -166,11 +182,17 @@ def edit_user(user_id):
 def delete_user(user_id):
     user = User.query.get_or_404(user_id)
     if user.id == current_user.id:
+        if request.method == 'DELETE':
+            return jsonify({'error': 'You cannot delete your own account'}), 400
         flash('You cannot delete your own account.', 'danger')
         return redirect(url_for('admin.users'))
 
+    disconnect_user(socketio, user.id)
     # Clean up associations
+    from models import ConversationRead
+    ConversationRead.query.filter_by(user_id=user.id).delete()
     user.groups = []
+    SupportTicket.query.filter_by(user_id=user.id).delete()
     db.session.delete(user)
     db.session.commit()
 
@@ -189,6 +211,8 @@ def toggle_user(user_id):
         return jsonify({'error': 'Cannot deactivate yourself'}), 400
     user.is_active = not user.is_active
     db.session.commit()
+    if not user.is_active:
+        disconnect_user(socketio, user.id)
     return jsonify({'success': True, 'is_active': user.is_active})
 
 # ─── Group Management (Admin/Owner) ───────────────────────────────────────────
@@ -205,7 +229,6 @@ def create_group():
     if name:
         group = Group(name=name, description=desc, created_by=current_user.id, invite_code=invite_code)
         Group.apply_default_access(group, current_user)
-        group.members.append(current_user)
         db.session.add(group)
         db.session.commit()
         socketio.emit('refresh_channels', {'id': group.id, 'action': 'create'}, namespace='/')
@@ -231,7 +254,7 @@ def edit_group_metadata(group_id):
     flash(f'Channel "{name}" updated successfully.', 'success')
     return redirect(url_for('admin.index'))
 
-@admin_bp.route('/groups/<int:group_id>/join')
+@admin_bp.route('/groups/<int:group_id>/join', methods=['POST'])
 @login_required
 @management_required
 def join_group(group_id):
@@ -242,7 +265,7 @@ def join_group(group_id):
         flash(f'You have joined "{group.name}".', 'success')
     return redirect(url_for('chat.index', group_id=group.id))
 
-@admin_bp.route('/groups/<int:group_id>/archive')
+@admin_bp.route('/groups/<int:group_id>/archive', methods=['POST'])
 @login_required
 @management_required
 def archive_group(group_id):
@@ -253,7 +276,7 @@ def archive_group(group_id):
     flash(f'Channel "{group.name}" moved to History.', 'info')
     return redirect(url_for('admin.index'))
 
-@admin_bp.route('/groups/<int:group_id>/delete')
+@admin_bp.route('/groups/<int:group_id>/delete', methods=['POST'])
 @login_required
 @management_required
 def delete_group(group_id):
@@ -282,7 +305,7 @@ def delete_group(group_id):
 @login_required
 def history():
     role_name = current_user.role.name if current_user.role else 'Member'
-    if role_name in ['Admin', 'Owner']:
+    if role_name in ['Admin', 'Owner', 'ED']:
         groups = Group.query.filter_by(is_archived=True).order_by(Group.created_at.desc()).all()
     else:
         groups = Group.query.filter(Group.is_archived == True).filter(
@@ -294,7 +317,7 @@ def history():
 @login_required
 def get_history_groups():
     role_name = current_user.role.name if current_user.role else 'Member'
-    if role_name in ['Admin', 'Owner']:
+    if role_name in ['Admin', 'Owner', 'ED']:
         groups = Group.query.filter_by(is_archived=True).all()
     else:
         groups = Group.query.filter(Group.is_archived == True).filter(
@@ -316,7 +339,7 @@ def history_detail(group_id):
     role_name = current_user.role.name if current_user.role else 'Member'
 
     # Security check: Admins/Owners see all, others only their own
-    if role_name not in ['Admin', 'Owner'] and current_user not in group.members:
+    if role_name not in ['Admin', 'Owner', 'ED'] and current_user not in group.members:
         flash('Access denied.', 'danger')
         return redirect(url_for('admin.history'))
         
@@ -343,3 +366,31 @@ def get_tickets():
         'username': t.user.username,
         'created_at': t.created_at.strftime('%Y-%m-%d %H:%M')
     } for t in tickets])
+
+@admin_bp.route('/tickets', methods=['POST'])
+@login_required
+def create_ticket():
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({'error': 'Expected a JSON object'}), 400
+    if not isinstance(data.get('subject'), str) or not isinstance(data.get('description'), str):
+        return jsonify({'error': 'Subject and description must be text'}), 400
+    subject = data['subject'].strip()
+    description = str(data.get('description', '')).strip()
+    priority = data.get('priority', 'medium')
+    if not subject or len(subject) > 200 or not description or priority not in ['low', 'medium', 'high']:
+        return jsonify({'error': 'Subject, description and valid priority are required'}), 400
+    ticket = SupportTicket(subject=subject, description=description, priority=priority, user_id=current_user.id)
+    db.session.add(ticket)
+    db.session.commit()
+    return jsonify({'success': True, 'id': ticket.id}), 201
+
+@admin_bp.route('/tickets/<int:ticket_id>/resolve', methods=['POST'])
+@login_required
+def resolve_ticket(ticket_id):
+    ticket = db.get_or_404(SupportTicket, ticket_id)
+    if ticket.user_id != current_user.id and (not current_user.role or current_user.role.name != 'Admin'):
+        return jsonify({'error': 'Unauthorized'}), 403
+    ticket.status = 'closed'
+    db.session.commit()
+    return jsonify({'success': True})

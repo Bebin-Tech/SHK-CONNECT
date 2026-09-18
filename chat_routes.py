@@ -1,10 +1,8 @@
 import os
-import uuid
 from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for, current_app
 from flask_login import login_required, current_user
 from models import db, Message, Group, Role, User
 from werkzeug.utils import secure_filename
-from sqlalchemy import or_
 from extensions import socketio
 
 chat_bp = Blueprint('chat', __name__)
@@ -49,7 +47,10 @@ def save_channel_avatar(file):
         return f"data:image/{ext};base64,{base64_string}"
 
     # Open image using Pillow
-    img = Image.open(file)
+    try:
+        img = Image.open(file)
+    except (OSError, ValueError) as exc:
+        raise ValueError('Please upload a valid raster image.') from exc
 
     # If it's a huge image, resize it while maintaining aspect ratio
     max_size = (800, 800)
@@ -62,7 +63,7 @@ def save_channel_avatar(file):
         img.save(buffered, format="PNG", optimize=True)
         fmt = "png"
     else:
-        img.save(buffered, format="JPEG", quality=85, optimize=True)
+        img.convert("RGB").save(buffered, format="JPEG", quality=85, optimize=True)
         fmt = "jpeg"
 
     img_data = buffered.getvalue()
@@ -96,14 +97,14 @@ def index(group_id=None):
             return redirect(url_for('chat.index'))
         
         messages = Message.query.filter_by(group_id=group_id, parent_id=None)\
-                               .order_by(Message.timestamp.desc())\
+                               .order_by(Message.timestamp.desc(), Message.id.desc())\
                                .limit(50).all()
         messages.reverse()
 
     # Sort users by role then name to make management easier
     all_users = User.query.join(Role).order_by(Role.name, User.first_name, User.username).all()
 
-    return render_template('react_chat.html')
+    return render_template('react_chat.html', groups=groups, group=group, messages=messages, all_users=all_users)
 
 @chat_bp.route('/load_history/<int:group_id>')
 @login_required
@@ -114,9 +115,9 @@ def load_history(group_id):
     if role_name not in ['Admin', 'Owner', 'ED'] and current_user not in group.members:
         return jsonify({'error': 'Unauthorized'}), 403
 
-    offset = request.args.get('offset', 0, type=int)
+    offset = max(0, request.args.get('offset', 0, type=int))
     messages = Message.query.filter_by(group_id=group_id, parent_id=None)\
-                           .order_by(Message.timestamp.desc())\
+                           .order_by(Message.timestamp.desc(), Message.id.desc())\
                            .offset(offset).limit(50).all()
     
     results = []
@@ -131,6 +132,9 @@ def load_history(group_id):
             'file_url': m.file_url,
             'file_type': m.message_type if m.message_type != 'text' else None,
             'replies': [{
+                'id': r.id,
+                'file_url': r.file_url,
+                'parent_id': r.parent_id,
                 'username': r.author.username if r.author else 'Unknown',
                 'full_name': r.author.first_name if r.author else None,
                 'role': r.author.role.name if r.author and r.author.role else 'Member',
@@ -153,12 +157,17 @@ def connect_users(group_id):
     # We maintain individual membership
     from models import User
     group.members = []
-    for uid in user_ids:
+    for uid in set(user_ids):
+        if not uid.isdigit():
+            continue
         u = db.session.get(User, uid)
         if u:
             group.members.append(u)
             
     db.session.commit()
+    from socket_handlers import sync_group_rooms
+    sync_group_rooms(socketio, group)
+    socketio.emit('refresh_channels', {'id': group.id, 'action': 'update'})
     return jsonify({'success': True})
 
 @chat_bp.route('/edit_group/<int:group_id>', methods=['POST'])
@@ -170,8 +179,8 @@ def edit_group(group_id):
 
     name = (request.form.get('name') or '').strip()
     description = (request.form.get('description') or '').strip()
-    if not name:
-        return jsonify({'error': 'Channel name is required'}), 400
+    if not name or len(name) > 100:
+        return jsonify({'error': 'Channel name must contain 1 to 100 characters'}), 400
 
     avatar = request.files.get('avatar')
     try:
@@ -212,6 +221,8 @@ def upload():
         return jsonify({'error': 'No file selected'}), 400
 
     ftype, ext = get_file_type(file.filename)
+    if ftype == 'file' or ext == 'svg':
+        return jsonify({'error': 'Unsupported file type'}), 400
 
     # Store images as Base64 for permanent persistence on Render
     if ftype == 'image':
@@ -253,7 +264,7 @@ def upload():
                 img.save(buffered, format="PNG", optimize=True)
                 fmt = "png"
             else:
-                img.save(buffered, format="JPEG", quality=80, optimize=True)
+                img.convert("RGB").save(buffered, format="JPEG", quality=80, optimize=True)
                 fmt = "jpeg"
 
             img_data = buffered.getvalue()
@@ -268,7 +279,7 @@ def upload():
                 'size': len(img_data)
             }), 200
         except Exception as e:
-            return jsonify({'error': f'Failed to process image: {str(e)}'}), 500
+            return jsonify({'error': 'Invalid image file'}), 400
 
     # For other files (documents/videos), continue using temporary file storage
     file.seek(0, 2)
@@ -286,7 +297,10 @@ def upload():
     filepath = os.path.join(upload_dir, safe_name)
     file.save(filepath)
     
-    file_url = f'/static/uploads/{ftype}/{safe_name}'
+    file_url = url_for('chat.uploaded_file', file_type=ftype, filename=safe_name)
+    from models import UploadedFile
+    db.session.add(UploadedFile(url=file_url, user_id=current_user.id))
+    db.session.commit()
     original_name = secure_filename(file.filename)
 
     return jsonify({
@@ -308,10 +322,9 @@ def create_group():
     desc = (request.form.get('description') or '').strip()
     invite_code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
 
-    if name:
+    if name and len(name) <= 100:
         group = Group(name=name, description=desc, created_by=current_user.id, invite_code=invite_code)
         Group.apply_default_access(group, current_user)
-        group.members.append(current_user)
         db.session.add(group)
         db.session.commit()
         socketio.emit('refresh_channels', {'id': group.id, 'action': 'create'}, namespace='/')
@@ -362,7 +375,25 @@ def search():
         'content': m.content,
         'user': m.author.username if m.author else 'Unknown',
         'timestamp': m.timestamp.strftime('%Y-%m-%d %H:%M') if m.timestamp else '',
-        'group_id': m.group_id
+        'group_id': m.group_id,
+        'is_archived': bool(m.group and m.group.is_archived)
     } for m in messages]
     
     return jsonify(results)
+
+
+@chat_bp.route('/uploads/<file_type>/<filename>')
+@login_required
+def uploaded_file(file_type, filename):
+    from flask import send_from_directory, abort
+    if file_type not in ['image', 'document', 'video']:
+        abort(404)
+    from messaging import can_read_attachment
+    file_url = url_for('chat.uploaded_file', file_type=file_type, filename=filename)
+    if not can_read_attachment(file_url, current_user):
+        abort(403)
+    directory = os.path.join(current_app.config['UPLOAD_FOLDER'], file_type)
+    # Keep previously issued /chat/uploads links working after private storage moves.
+    if not os.path.isfile(os.path.join(directory, secure_filename(filename))):
+        directory = os.path.join(current_app.static_folder, 'uploads', file_type)
+    return send_from_directory(directory, filename, as_attachment=file_type == 'document')

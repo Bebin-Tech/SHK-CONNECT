@@ -1,3 +1,10 @@
+FROM node:22-slim AS frontend-build
+WORKDIR /build/frontend
+COPY frontend/package*.json ./
+RUN npm ci
+COPY frontend/ ./
+RUN npm run build
+
 # Use Python slim image
 FROM python:3.11-slim
 
@@ -15,6 +22,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY . .
+COPY --from=frontend-build /build/static/dist ./static/dist
 
 # Expose port
 EXPOSE 5000

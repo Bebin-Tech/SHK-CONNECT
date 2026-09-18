@@ -1,0 +1,9 @@
+.git
+.venv
+**/node_modules
+**/__pycache__
+.env
+instance
+SHK-CONNECT
+SHK-CONNECT-1
+.test-artifacts

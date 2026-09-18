@@ -10,27 +10,42 @@ const HistoryDetail = () => {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [error, setError] = useState('');
 
   useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setError('');
+    setMessages([]);
+    setSearch('');
     const fetchData = async () => {
       try {
         // We'll use the existing load_history endpoint for archived groups too
         const [groupRes, historyRes] = await Promise.all([
-          axios.get('/api/channels'), // We need a specific get group by ID api or just filter
+          axios.get('/admin/history_groups'), // We need a specific get group by ID api or just filter
           axios.get(`/chat/load_history/${groupId}?offset=0`)
         ]);
 
         // Find the group from the list (or we could add a dedicated API)
         const currentGroup = groupRes.data.find(g => g.id === parseInt(groupId)) || { name: 'Archived Channel' };
+        if (!active) return;
         setGroup(currentGroup);
-        setMessages(historyRes.data.reverse());
+        const allMessages = [...historyRes.data];
+        while (allMessages.length && allMessages.length % 50 === 0) {
+          const page = await axios.get(`/chat/load_history/${groupId}?offset=${allMessages.length}`);
+          if (!active) return;
+          if (!page.data.length) break;
+          allMessages.push(...page.data);
+        }
+        if (active) setMessages(allMessages.reverse());
       } catch (err) {
-        console.error("Failed to load history detail", err);
+        if (active) setError('Unable to load this transcript. Check your access and try again.');
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     };
     fetchData();
+    return () => { active = false; };
   }, [groupId]);
 
   const filteredMessages = messages.filter(m =>
@@ -44,8 +59,10 @@ const HistoryDetail = () => {
     </div>
   );
 
+  if (error) return <div role="alert" className="p-8 text-red-700">{error} <Link to="/history">Back to history</Link></div>;
+
   return (
-    <div className="flex flex-col h-full bg-white font-outfit">
+    <div className="history-transcript flex flex-col h-full bg-white font-outfit">
       {/* Header */}
       <header className="h-20 border-b border-slate-100 flex items-center justify-between px-6 lg:px-10 bg-white sticky top-0 z-10 shrink-0">
         <div className="flex items-center gap-6 min-w-0">
@@ -67,8 +84,8 @@ const HistoryDetail = () => {
         </div>
 
         <div className="flex items-center gap-3 shrink-0">
-          <button className="hidden sm:flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white rounded-xl font-bold text-xs hover:bg-black transition shadow-lg uppercase tracking-widest active:scale-95">
-            <Download size={16} /> Export PDF
+          <button onClick={() => window.print()} className="hidden sm:flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white rounded-xl font-bold text-xs hover:bg-black transition shadow-lg uppercase tracking-widest active:scale-95">
+            <Download size={16} /> Print / Save PDF
           </button>
         </div>
       </header>
@@ -106,7 +123,6 @@ const HistoryDetail = () => {
               key={msg.id}
               message={msg}
               isMe={false} // Disable "isMe" styling for archived views to keep it neutral
-              onReply={() => {}} // Disable replies in archived view
             />
           ))}
 

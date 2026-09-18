@@ -1,0 +1,12 @@
+@media print {
+  body, #root, .app-layout, .app-content, .app-content > main,
+  .history-transcript, .history-transcript > div {
+    height: auto !important;
+    overflow: visible !important;
+  }
+  .app-layout > :not(.app-content), .app-content > header,
+  .history-transcript button, .history-transcript input,
+  .history-transcript header a { display: none !important; }
+  .history-transcript header { position: static !important; }
+  .history-transcript img { max-height: 400px; }
+}

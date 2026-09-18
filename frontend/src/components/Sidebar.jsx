@@ -45,7 +45,7 @@ const Sidebar = ({ user, toggleMobileMenu, isMobileOpen }) => {
           <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-3 mb-3">Navigation</p>
           <nav className="space-y-1">
             {filteredNav.map((item) => {
-              const isActive = activePath.startsWith(item.path);
+              const isActive = activePath.startsWith(item.path) || (item.path === '/chat' && activePath.startsWith('/dm/'));
               return (
                 <Link
                   key={item.path}

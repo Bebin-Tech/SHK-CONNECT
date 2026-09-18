@@ -4,14 +4,17 @@ import { Users, Hash, TrendingUp, TrendingDown, LayoutDashboard, Plus, ArrowUpRi
 
 const Dashboard = () => {
   const [stats, setStats] = useState(null);
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     axios.get('/admin/stats').then(res => {
       setStats(res.data);
       setLoading(false);
-    });
+    }).catch(() => { setError('Unable to load this page. Check your access and try again.'); setLoading(false); });
   }, []);
+
+  if (error) return <div role="alert" className="p-8 text-red-600">{error}</div>;
 
   if (loading) return (
     <div className="flex-1 flex items-center justify-center bg-slate-50">
@@ -27,7 +30,7 @@ const Dashboard = () => {
   ];
 
   return (
-    <div className="p-6 lg:p-10 bg-slate-50 min-h-full overflow-y-auto">
+    <div className="p-6 lg:p-10 bg-slate-50 h-full min-h-0 overflow-y-auto">
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-3">
@@ -35,7 +38,7 @@ const Dashboard = () => {
           </h1>
           <p className="text-sm text-slate-500 font-medium mt-1">Monitor workspace performance and financial summaries.</p>
         </div>
-        <button className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition shadow-lg shadow-blue-600/20 active:scale-95">
+        <button onClick={() => { window.location.href = '/chat'; }} className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition shadow-lg shadow-blue-600/20 active:scale-95">
           <Plus size={18} /> New Channel
         </button>
       </div>
@@ -61,7 +64,7 @@ const Dashboard = () => {
         <div className="lg:col-span-2 bg-white rounded-3xl border border-slate-200/60 shadow-sm overflow-hidden">
           <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-white">
             <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest">Active Channels</h3>
-            <button className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1">
+            <button onClick={() => { window.location.href = '/chat'; }} className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1">
               View All <ArrowUpRight size={14} />
             </button>
           </div>
@@ -92,11 +95,11 @@ const Dashboard = () => {
             <div className="space-y-4">
               <div className="flex items-center gap-3 bg-white/5 p-4 rounded-2xl border border-white/10">
                 <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]" />
-                <p className="text-xs font-bold tracking-wide">Cloud Storage Active</p>
+                <p className="text-xs font-bold tracking-wide">Workspace overview</p>
               </div>
               <div className="flex items-center gap-3 bg-white/5 p-4 rounded-2xl border border-white/10">
                 <div className="w-2 h-2 rounded-full bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.5)]" />
-                <p className="text-xs font-bold tracking-wide">Backup sync pending</p>
+                <p className="text-xs font-bold tracking-wide">Manage your team</p>
               </div>
             </div>
           </div>

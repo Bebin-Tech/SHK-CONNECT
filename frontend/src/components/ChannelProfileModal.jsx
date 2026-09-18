@@ -11,11 +11,16 @@ const ChannelProfileModal = ({ isOpen, onClose, group, onUpdate }) => {
 
   useEffect(() => {
     if (isOpen && group) {
+      setAvatar(null);
       setName(group.name || '');
       setDescription(group.description || '');
       setPreview(group.avatar_url || null);
     }
   }, [isOpen, group]);
+
+  useEffect(() => () => {
+    if (preview?.startsWith('blob:')) URL.revokeObjectURL(preview);
+  }, [preview]);
 
   if (!isOpen) return null;
 

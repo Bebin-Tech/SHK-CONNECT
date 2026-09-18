@@ -4,6 +4,7 @@ import { Users, Search, MoreVertical, Shield, UserPlus, Mail, ShieldAlert, Trash
 
 const UserDirectory = () => {
   const [users, setUsers] = useState([]);
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
 
@@ -11,13 +12,15 @@ const UserDirectory = () => {
     axios.get('/api/users').then(res => {
       setUsers(res.data);
       setLoading(false);
-    });
+    }).catch(() => { setError('Unable to load this page. Check your access and try again.'); setLoading(false); });
   }, []);
 
   const filteredUsers = users.filter(u =>
     (u.first_name || u.username).toLowerCase().includes(search.toLowerCase()) ||
     u.role.toLowerCase().includes(search.toLowerCase())
   );
+
+  if (error) return <div role="alert" className="p-8 text-red-600">{error}</div>;
 
   if (loading) return (
     <div className="flex-1 flex items-center justify-center">
@@ -26,7 +29,7 @@ const UserDirectory = () => {
   );
 
   return (
-    <div className="p-6 lg:p-10 bg-slate-50 min-h-full overflow-y-auto">
+    <div className="p-6 lg:p-10 bg-slate-50 h-full min-h-0 overflow-y-auto">
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-3">
@@ -34,7 +37,7 @@ const UserDirectory = () => {
           </h1>
           <p className="text-sm text-slate-500 font-medium mt-1">Manage team members, roles and platform access.</p>
         </div>
-        <button className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-black transition shadow-lg active:scale-95">
+        <button onClick={() => { window.location.href = '/admin/users'; }} className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-black transition shadow-lg active:scale-95">
           <UserPlus size={18} /> Add New User
         </button>
       </div>
@@ -100,18 +103,18 @@ const UserDirectory = () => {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-2">
                       <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                      <span className="text-xs font-bold text-emerald-600 uppercase tracking-tight">Active</span>
+                      <span className="text-xs font-bold text-emerald-600 uppercase tracking-tight">{u.is_active ? 'Active' : 'Inactive'}</span>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right">
                     <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="Reset Password">
+                      <button onClick={() => { window.location.href = '/admin/users'; }} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="Reset Password">
                         <ShieldAlert size={16} />
                       </button>
-                      <button className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all" title="Delete User">
+                      <button onClick={async () => { if (confirm(`Delete ${u.username}?`)) { try { await axios.delete(`/admin/users/${u.id}/delete`); setUsers(prev => prev.filter(item => item.id !== u.id)); } catch (err) { alert(err.response?.data?.error || 'Unable to delete user'); } } }} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all" title="Delete User">
                         <Trash2 size={16} />
                       </button>
-                      <button className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all">
+                      <button title="Toggle active status" onClick={async () => { try { const res = await axios.post(`/admin/users/${u.id}/toggle`); setUsers(prev => prev.map(item => item.id === u.id ? {...item,is_active:res.data.is_active} : item)); } catch (err) { alert(err.response?.data?.error || 'Unable to update user'); } }} className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all">
                         <MoreVertical size={16} />
                       </button>
                     </div>

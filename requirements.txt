@@ -21,3 +21,5 @@ Flask-RESTful>=0.3,<1
 Flask-Cors>=4.0,<7
 flasgger>=0.9,<1
 Pillow>=10.0,<11
+
+PyMySQL[rsa]>=1.1,<2

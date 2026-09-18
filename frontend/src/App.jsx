@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import axios from 'axios';
-import io from 'socket.io-client';
+import { socket } from './socket';
 import Layout from './components/Layout';
 import ChatRoom from './pages/ChatRoom';
 import Dashboard from './pages/Dashboard';
@@ -13,9 +13,7 @@ import Expenses from './pages/Expenses';
 import ActivityLogs from './pages/ActivityLogs';
 import Profile from './pages/Profile';
 
-const socket = io({
-  transports: ['polling', 'websocket']
-});
+
 
 function App() {
   const [user, setUser] = useState(null);
@@ -27,9 +25,10 @@ function App() {
       try {
         const res = await axios.get('/api/me');
         setUser(res.data);
+        socket.connect();
       } catch (err) {
         if (err.response?.status === 401) {
-          window.location.href = window.location.port === '5173' ? 'http://localhost:5000/login' : '/login';
+          window.location.href = '/login';
         }
       } finally {
         setLoading(false);
@@ -56,6 +55,8 @@ function App() {
     );
   }
 
+  if (!user) return <div role="alert">Unable to load your account. Please reload or sign in again.</div>;
+
   return (
     <BrowserRouter>
       <Layout
@@ -65,7 +66,8 @@ function App() {
         setNotifications={setNotifications}
       >
         <Routes>
-          <Route path="/chat" element={<ChatRoom user={user} />} />
+          <Route path="/dm/:recipientId" element={<ChatRoom user={user} />} />
+          <Route path="/chat/:groupId?" element={<ChatRoom user={user} />} />
           <Route path="/admin" element={<Dashboard />} />
           <Route path="/users" element={<UserDirectory />} />
           <Route path="/history" element={<History />} />
@@ -74,6 +76,7 @@ function App() {
           <Route path="/expenses" element={<Expenses />} />
           <Route path="/logs" element={<ActivityLogs />} />
           <Route path="/profile" element={<Profile user={user} />} />
+          <Route path="*" element={<Navigate to="/chat" replace />} />
           <Route path="/" element={<Navigate to="/chat" replace />} />
         </Routes>
       </Layout>

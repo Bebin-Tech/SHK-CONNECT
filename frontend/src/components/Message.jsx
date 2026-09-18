@@ -3,7 +3,7 @@ import { CornerUpRight, FileText, Download } from 'lucide-react';
 
 const Message = ({ message, isMe, onReply, isReply = false }) => {
   const role = message.role || 'Member';
-  const displayName = message.full_name || message.username;
+  const displayName = message.full_name || message.username || 'Unknown';
   const sz = isReply ? 'w-8 h-8 rounded-lg text-[10px]' : 'w-10 h-10 rounded-xl text-xs';
 
   const roleColors = {
@@ -62,7 +62,7 @@ const Message = ({ message, isMe, onReply, isReply = false }) => {
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-bold text-slate-900 truncate">{message.content || 'Secure File'}</p>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Encrypted Download</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Download attachment</p>
                 </div>
                 <div className="p-2 bg-slate-50 rounded-lg text-slate-400 group-hover:text-blue-600 transition-colors">
                   <Download size={18} />
@@ -70,7 +70,7 @@ const Message = ({ message, isMe, onReply, isReply = false }) => {
               </a>
             )
           ) : (
-            <div className={`p-4 rounded-2xl text-[15px] leading-relaxed shadow-sm font-medium transition-all duration-300 ${
+            <div className={`p-4 rounded-2xl text-[15px] leading-relaxed whitespace-pre-wrap shadow-sm font-medium transition-all duration-300 ${
               isMe && !isReply
                 ? 'bg-blue-600 text-white rounded-tr-none shadow-blue-600/10'
                 : 'bg-white text-slate-800 rounded-tl-none border border-slate-200/60'
@@ -80,7 +80,7 @@ const Message = ({ message, isMe, onReply, isReply = false }) => {
           )}
 
           {/* Action Footer */}
-          {!isReply && (
+          {!isReply && onReply && (
             <div className={`mt-2 flex items-center gap-4 opacity-0 group-hover:opacity-100 transition-all duration-200 ${isMe ? 'justify-end translate-x-2 group-hover:translate-x-0' : '-translate-x-2 group-hover:translate-x-0'}`}>
               <button
                 onClick={onReply}

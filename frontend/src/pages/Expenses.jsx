@@ -1,18 +1,29 @@
+import RecordForm from '../components/RecordForm';
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { CreditCard, Plus, Search, Filter, ArrowUpRight, ArrowDownLeft, MoreVertical, CheckCircle2, XCircle, Clock, Receipt } from 'lucide-react';
 
 const Expenses = () => {
   const [expenses, setExpenses] = useState([]);
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
   const [search, setSearch] = useState('');
 
   useEffect(() => {
     axios.get('/api/expenses').then(res => {
       setExpenses(res.data);
       setLoading(false);
-    });
+    }).catch(() => { setError('Unable to load this page. Check your access and try again.'); setLoading(false); });
   }, []);
+
+  const exportReport = () => {
+    const quote = value => '"' + String(value ?? '').replaceAll('"', '""') + '"';
+    const rows = [['Date','Description','Category','Type','Amount','Status'], ...expenses.map(e => [e.bill_date,e.description,e.category,e.type,e.amount,e.status])];
+    const blob = new Blob([rows.map(row => row.map(quote).join(',')).join('\r\n')], {type:'text/csv;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a'); anchor.href = url; anchor.download = 'expenses.csv'; anchor.click(); URL.revokeObjectURL(url);
+  };
 
   const getStatusStyle = (status) => {
     switch (status) {
@@ -30,6 +41,8 @@ const Expenses = () => {
     e.username?.toLowerCase().includes(search.toLowerCase())
   );
 
+  if (error) return <div role="alert" className="p-8 text-red-600">{error}</div>;
+
   if (loading) return (
     <div className="flex-1 flex items-center justify-center bg-slate-50">
       <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
@@ -37,7 +50,8 @@ const Expenses = () => {
   );
 
   return (
-    <div className="p-6 lg:p-10 bg-slate-50 min-h-full overflow-y-auto">
+    <div className="p-6 lg:p-10 bg-slate-50 h-full min-h-0 overflow-y-auto">
+      {creating && <RecordForm title="Add Transaction" fields={[{name:'amount',label:'Amount',type:'number'},{name:'bill_date',label:'Bill date',type:'date'},{name:'category',label:'Category'},{name:'description',label:'Description'},{name:'type',label:'Type',options:['debit','credit']}]} onClose={() => setCreating(false)} onSubmit={async data => { await axios.post('/api/expenses', data); const res = await axios.get('/api/expenses'); setExpenses(res.data); }} />}
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-3">
@@ -45,7 +59,7 @@ const Expenses = () => {
           </h1>
           <p className="text-sm text-slate-500 font-medium mt-1">Audit transactions, manage reimbursements and financial logs.</p>
         </div>
-        <button className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition shadow-lg shadow-blue-600/20 active:scale-95">
+        <button onClick={() => setCreating(true)} className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition shadow-lg shadow-blue-600/20 active:scale-95">
           <Plus size={18} /> Add Transaction
         </button>
       </div>
@@ -57,7 +71,7 @@ const Expenses = () => {
           <p className="text-3xl font-black text-slate-900">₹{expenses.reduce((acc, curr) => acc + (curr.type === 'credit' ? curr.amount : -curr.amount), 0).toLocaleString()}</p>
           <div className="mt-4 flex items-center gap-2 text-emerald-500">
             <CheckCircle2 size={14} />
-            <span className="text-[10px] font-bold uppercase tracking-wider">Synchronized with bank</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider">Recorded transactions</span>
           </div>
         </div>
         <div className="bg-white p-6 rounded-3xl border border-slate-200/60 shadow-sm">
@@ -72,7 +86,7 @@ const Expenses = () => {
           <div className="relative z-10 text-white">
             <p className="text-[10px] font-black text-indigo-300 uppercase tracking-[0.2em] mb-4">Quick Audit</p>
             <p className="text-sm font-medium leading-relaxed">Download monthly financial reconciliation statement.</p>
-            <button className="mt-4 text-xs font-black uppercase tracking-widest bg-white text-indigo-900 px-4 py-2 rounded-lg">Export Report</button>
+            <button onClick={exportReport} className="mt-4 text-xs font-black uppercase tracking-widest bg-white text-indigo-900 px-4 py-2 rounded-lg">Export Report</button>
           </div>
           <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-white/5 rounded-full blur-2xl" />
         </div>
@@ -90,7 +104,7 @@ const Expenses = () => {
               className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-bold outline-none focus:border-blue-500/30 focus:ring-4 focus:ring-blue-500/5 transition-all shadow-sm"
             />
           </div>
-          <button className="p-3 bg-white border border-slate-200 rounded-2xl text-slate-400 hover:text-blue-600 transition-all shadow-sm">
+          <button disabled title="Advanced filters are not available yet" className="p-3 bg-white border border-slate-200 rounded-2xl text-slate-400 hover:text-blue-600 transition-all shadow-sm">
             <Filter size={20} />
           </button>
         </div>
@@ -143,10 +157,10 @@ const Expenses = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <button className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="View Receipt">
+                      <button disabled className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="Receipt management is not available yet">
                         <Receipt size={16} />
                       </button>
-                      <button className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all">
+                      <button disabled title="Additional actions are not available yet" className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all">
                         <MoreVertical size={16} />
                       </button>
                     </div>

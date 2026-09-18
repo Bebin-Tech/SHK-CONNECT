@@ -4,6 +4,7 @@ import { Archive, Search, Calendar, MessageSquare, ChevronRight, FileText, Downl
 
 const History = () => {
   const [groups, setGroups] = useState([]);
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
 
@@ -11,12 +12,14 @@ const History = () => {
     axios.get('/admin/history_groups').then(res => {
       setGroups(res.data);
       setLoading(false);
-    });
+    }).catch(() => { setError('Unable to load this page. Check your access and try again.'); setLoading(false); });
   }, []);
 
   const filteredGroups = groups.filter(g =>
     g.name.toLowerCase().includes(search.toLowerCase())
   );
+
+  if (error) return <div role="alert" className="p-8 text-red-600">{error}</div>;
 
   if (loading) return (
     <div className="flex-1 flex items-center justify-center">
@@ -25,7 +28,7 @@ const History = () => {
   );
 
   return (
-    <div className="p-6 lg:p-10 bg-slate-50 min-h-full overflow-y-auto">
+    <div className="p-6 lg:p-10 bg-slate-50 h-full min-h-0 overflow-y-auto">
       <div className="mb-8">
         <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-3">
           <Archive className="text-rose-600" /> Archived History
@@ -60,7 +63,7 @@ const History = () => {
               <div className="mt-6 space-y-3">
                 <div className="flex items-center gap-3 text-slate-500">
                   <Calendar size={14} className="text-slate-300" />
-                  <span className="text-xs font-bold tracking-tight">Archived on {g.created_at}</span>
+                  <span className="text-xs font-bold tracking-tight">Created on {g.created_at}</span>
                 </div>
                 <div className="flex items-center gap-3 text-slate-500">
                   <MessageSquare size={14} className="text-slate-300" />
@@ -69,10 +72,10 @@ const History = () => {
               </div>
             </div>
             <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
-              <button className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-rose-600 transition-colors">
-                <FileText size={14} /> Download Log
+              <button onClick={() => { window.location.href = `/history/${g.id}`; }} className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-rose-600 transition-colors">
+                <FileText size={14} /> View / Print Log
               </button>
-              <button className="flex items-center gap-1 text-[10px] font-black text-blue-600 uppercase tracking-widest hover:translate-x-1 transition-transform">
+              <button onClick={() => { window.location.href = `/history/${g.id}`; }} className="flex items-center gap-1 text-[10px] font-black text-blue-600 uppercase tracking-widest hover:translate-x-1 transition-transform">
                 Read Detailed <ChevronRight size={14} />
               </button>
             </div>

@@ -1,29 +1,21 @@
 import sys
 
-# Eventlet monkey patching (skip if running Python 3.13 or newer)
-if sys.version_info.major == 3 and sys.version_info.minor < 13:
+import os
+
+# Patch only when eventlet was explicitly selected, before importing Flask.
+if os.getenv('SOCKETIO_ASYNC_MODE') == 'eventlet' and sys.version_info < (3, 13):
     import eventlet
     eventlet.monkey_patch()
 
-    # Patch psycopg2 for eventlet if it's installed
-    try:
-        from psycogreen.eventlet import patch_psycopg
-        patch_psycopg()
-    except ImportError:
-        pass
-
-import os
-import sys
-
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
-from flask_socketio import SocketIO
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_migrate import Migrate
-from sqlalchemy import inspect, text
-from models import db, User, Role, Group, Message, Expense, ActivityLog, SupportTicket
+from sqlalchemy import func
+from models import db, User, Role
 from admin_routes import admin_bp
 from chat_routes import chat_bp
 from api_routes import api_bp
+from workspace_routes import workspace_bp
 from socket_handlers import register_socket_handlers
 from dotenv import load_dotenv
 from extensions import socketio
@@ -42,7 +34,7 @@ def normalize_database_url(url):
         return 'sqlite:///shk_connect.db'
 
     # Clean the URL (remove trailing dots, spaces, etc.)
-    url = url.strip().rstrip('.')
+    url = url.strip()
 
     if url.startswith('postgres://'):
         return url.replace('postgres://', 'postgresql://', 1)
@@ -64,18 +56,12 @@ def env_bool(name, default=False):
     return value.strip().lower() in {'1', 'true', 'yes', 'on'}
 
 def get_async_mode():
-    if sys.version_info.major == 3 and sys.version_info.minor >= 13:
-        return 'threading'
-    mode = os.getenv('SOCKETIO_ASYNC_MODE')
-    if mode: return mode
-    try:
-        import eventlet
-        return 'eventlet'
-    except ImportError:
-        return 'threading'
+    return os.getenv('SOCKETIO_ASYNC_MODE', 'threading') if sys.version_info < (3, 13) else 'threading'
 
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'shk-industries-default-secret')
-app.config['UPLOAD_FOLDER'] = os.getenv('UPLOAD_FOLDER', os.path.join(app.root_path, 'static', 'uploads'))
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY') or __import__('secrets').token_hex(32)
+app.config['SESSION_COOKIE_SECURE'] = env_bool('SESSION_COOKIE_SECURE')
+app.config['MAX_CONTENT_LENGTH'] = 21 * 1024 * 1024
+app.config['UPLOAD_FOLDER'] = os.getenv('UPLOAD_FOLDER', os.path.join(app.instance_path, 'uploads'))
 app.config['PREFERRED_URL_SCHEME'] = os.getenv('PREFERRED_URL_SCHEME', 'https')
 
 db.init_app(app)
@@ -89,8 +75,9 @@ if sys.version_info.major == 3 and sys.version_info.minor >= 13:
 
 socketio.init_app(
     app,
-    cors_allowed_origins=os.getenv('SOCKETIO_CORS_ORIGINS', '*'),
+    cors_allowed_origins=os.getenv('SOCKETIO_CORS_ORIGINS') or None,
     async_mode=async_mode,
+    max_http_buffer_size=21 * 1024 * 1024,
     ping_timeout=60,
     ping_interval=25,
 )
@@ -102,76 +89,73 @@ login_manager.login_view = 'login'
 app.register_blueprint(admin_bp, url_prefix='/admin')
 app.register_blueprint(chat_bp, url_prefix='/chat')
 app.register_blueprint(api_bp, url_prefix='/api')
+app.register_blueprint(workspace_bp, url_prefix='/api')
 
 # Register Socket Handlers
 register_socket_handlers(socketio)
 
+@app.after_request
+def audit_mutations(response):
+    if request.method in {'POST', 'PUT', 'PATCH', 'DELETE'} and response.status_code < 400 and current_user.is_authenticated and request.endpoint != 'workspace.mark_read':
+        from models import ActivityLog
+        db.session.add(ActivityLog(action=f'{request.method} {request.endpoint}',
+                                   details=request.path, user_id=current_user.id,
+                                   ip_address=request.remote_addr))
+        db.session.commit()
+    return response
+
+@login_manager.unauthorized_handler
+def unauthorized():
+    if request.path.startswith('/api/') or request.path.startswith('/chat/') and request.endpoint != 'chat.index' or request.path.startswith('/admin/') and request.accept_mimetypes.best == 'application/json':
+        return jsonify({'error': 'Authentication required'}), 401
+    return redirect(url_for('login'))
+
 @login_manager.user_loader
 def load_user(user_id):
-    return db.session.get(User, int(user_id))
+    try:
+        user = db.session.get(User, int(user_id))
+        return user if user and user.is_active else None
+    except (TypeError, ValueError):
+        return None
 
 def initialize_database():
-    if not env_bool('AUTO_CREATE_DB', True): return
-    try:
-        with app.app_context():
-            # Ensure the database schema is up-to-date
-            # Attempt to alter avatar_url and file_url to TEXT for Base64 support
-            try:
-                db.session.execute(text("ALTER TABLE groups ALTER COLUMN avatar_url TYPE TEXT"))
-                db.session.execute(text("ALTER TABLE messages ALTER COLUMN file_url TYPE TEXT"))
-                db.session.commit()
-                print("Database schema updated: Large data columns optimized.")
-            except Exception:
-                db.session.rollback()
-
-            # Check if we already have roles. If so, we assume DB is initialized.
-            inspector = inspect(db.engine)
-            if not inspector.has_table("roles"):
-                db.create_all()
-                print("Database tables created.")
-
-            # Seed basic roles
-            roles = ['Admin', 'Owner', 'Manager', 'Staff', 'Accounts', 'ED', 'Member']
-            for r_name in roles:
-                if not Role.query.filter_by(name=r_name).first():
-                    db.session.add(Role(name=r_name))
+    if not env_bool('AUTO_CREATE_DB', True):
+        return
+    with app.app_context():
+        db.create_all()
+        for name in ['Admin', 'Owner', 'Manager', 'Staff', 'Accounts', 'ED', 'Member']:
+            if not Role.query.filter_by(name=name).first():
+                db.session.add(Role(name=name))
+        db.session.commit()
+        # Bootstrap is opt-in and never changes an existing account.
+        email = os.getenv('ADMIN_EMAIL', 'admin@shk.com')
+        password = os.getenv('ADMIN_PASSWORD')
+        if password and not User.query.filter((User.email == email) | (User.username == email)).first():
+            user = User(username=email, email=email, role=Role.query.filter_by(name='Admin').one())
+            user.set_password(password)
+            db.session.add(user)
             db.session.commit()
 
-            # Ensure a default Admin user exists
-            admin_role = Role.query.filter_by(name='Admin').first()
-            admin_email = 'admin@shk.com'
-            admin_username = 'admin@shk.com'
+@app.context_processor
+def frontend_assets():
+    import json
+    from pathlib import Path
+    manifest = Path(app.static_folder) / 'dist' / '.vite' / 'manifest.json'
+    entry = json.loads(manifest.read_text()).get('src/main.jsx', {}) if manifest.exists() else {}
+    return {'frontend_entry': entry}
 
-            existing_admin = User.query.filter((User.email == admin_email) | (User.username == admin_username)).first()
+@app.route('/dm/<int:group_id>')
+@app.route('/users')
+@app.route('/history')
+@app.route('/history/<int:group_id>')
+@app.route('/tickets')
+@app.route('/expenses')
+@app.route('/logs')
+@app.route('/profile')
+@login_required
+def frontend_page(group_id=None):
+    return render_template('react_chat.html')
 
-            if not existing_admin:
-                admin_user = User(
-                    username=admin_username,
-                    email=admin_email,
-                    role_id=admin_role.id if admin_role else None
-                )
-                admin_user.set_password("admin123")
-                db.session.add(admin_user)
-                db.session.commit()
-                print(f"Default Admin user created: {admin_email} / admin123")
-            else:
-                # If the admin exists but you can't log in, let's force reset the password to admin123
-                # This ensures the credentials you provided ALWAYS work on startup.
-                existing_admin.set_password("admin123")
-                existing_admin.email = admin_email
-                existing_admin.username = admin_username
-                if admin_role:
-                    existing_admin.role_id = admin_role.id
-                db.session.commit()
-                print(f"Admin account reset/verified: {admin_email} / admin123")
-
-            print("Database check/initialization complete.")
-    except Exception as e:
-        print(f"Error during database initialization: {e}")
-        db.session.rollback()
-        # In production, if we can't init the DB, we might want to know.
-        if os.getenv('FLASK_ENV') == 'production':
-            raise e
 
 initialize_database()
 
@@ -187,17 +171,16 @@ def login():
         return redirect(url_for('chat.index'))
     if request.method == 'POST':
         identifier = (request.form.get('email') or '').strip()
-        password = (request.form.get('password') or '').strip()
+        password = request.form.get('password') or ''
         remember = True if request.form.get('remember') else False
 
         # Case-insensitive check by Email OR Username
-        from sqlalchemy import func
         user = User.query.filter(
             (func.lower(User.email) == func.lower(identifier)) |
             (func.lower(User.username) == func.lower(identifier))
         ).first()
 
-        if user and user.check_password(password):
+        if user and user.is_active and user.check_password(password):
             login_user(user, remember=remember)
             return redirect(url_for('chat.index'))
 
@@ -210,10 +193,13 @@ def signup():
     if current_user.is_authenticated:
         return redirect(url_for('chat.index'))
     if request.method == 'POST':
-        username = request.form.get('username')
-        email = request.form.get('email')
-        password = request.form.get('password')
-        if User.query.filter_by(email=email).first():
+        username = (request.form.get('username') or '').strip()
+        email = (request.form.get('email') or '').strip()
+        password = request.form.get('password') or ''
+        if not username or len(username) > 100 or '@' not in email or len(email) > 120 or not password:
+            flash('All fields are required', 'danger')
+            return redirect(url_for('signup'))
+        if User.query.filter((func.lower(User.email).in_([email.lower(), username.lower()])) | (func.lower(User.username).in_([email.lower(), username.lower()]))).first():
             flash('Email already exists', 'danger')
             return redirect(url_for('signup'))
         member_role = Role.query.filter_by(name='Member').first()
@@ -228,6 +214,8 @@ def signup():
 @app.route('/logout')
 @login_required
 def logout():
+    from socket_handlers import disconnect_user
+    disconnect_user(socketio, current_user.id)
     logout_user()
     return redirect(url_for('login'))
 

@@ -98,7 +98,7 @@ const ChannelSidebar = ({ groups, currentGroup, onSelectGroup, user, onCreateCha
           </div>
           <div className="min-w-0">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Live Workspace</p>
-            <p className="text-[9px] font-bold text-blue-600/60 truncate">Synchronized encrypted</p>
+            <p className="text-[9px] font-bold text-blue-600/60 truncate">Connected workspace</p>
           </div>
         </div>
       </div>

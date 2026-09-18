@@ -9,6 +9,11 @@ services:
       MYSQL_DATABASE: shk_work_flow
       MYSQL_USER: user
       MYSQL_PASSWORD: password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
     ports:
       - "3306:3306"
     volumes:
@@ -22,7 +27,8 @@ services:
       - DATABASE_URL=mysql+pymysql://user:password@db:3306/shk_work_flow
       - SECRET_KEY=shk-industries-secret-key-2024
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
 volumes:
   mysql_data:

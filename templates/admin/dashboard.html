@@ -53,18 +53,18 @@
                         <p class="text-[10px] text-gray-400 font-mono">CODE: {{ group.invite_code }}</p>
                     </div>
                     <div class="grid grid-cols-4 sm:flex gap-2">
-                        <a href="{{ url_for('admin.join_group', group_id=group.id) }}" class="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition flex items-center justify-center" title="Join & View in Chat">
+                        <form method="post" action="{{ url_for('admin.join_group', group_id=group.id) }}" style="display:inline"><button type="submit" class="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition flex items-center justify-center" title="Join & View in Chat">
                             <i data-lucide="message-square" class="w-4 h-4"></i>
-                        </a>
+                        </button></form>
                         <button onclick="openEditModal({{ group.id }}, '{{ group.name }}', '{{ group.description }}')" class="p-2 bg-indigo-100 text-indigo-600 rounded-lg hover:bg-indigo-200 transition flex items-center justify-center" title="Edit Channel">
                             <i data-lucide="edit-3" class="w-4 h-4"></i>
                         </button>
                         <button onclick="copyToClipboard('{{ request.host_url }}auth/invite/{{ group.invite_code }}')" class="p-2 bg-green-100 text-green-600 rounded-lg hover:bg-green-200 transition flex items-center justify-center" title="Copy Invite Link">
                             <i data-lucide="link" class="w-4 h-4"></i>
                         </button>
-                        <a href="{{ url_for('admin.delete_group', group_id=group.id) }}" onclick="return confirm('Move this channel to History?')" class="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition flex items-center justify-center" title="Move to History">
+                        <form method="post" action="{{ url_for('admin.delete_group', group_id=group.id) }}" style="display:inline"><button type="submit" onclick="return confirm('Move this channel to History?')" class="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition flex items-center justify-center" title="Move to History">
                             <i data-lucide="archive" class="w-4 h-4"></i>
-                        </a>
+                        </button></form>
                     </div>
                 </div>
                 {% endfor %}

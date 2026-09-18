@@ -1,7 +1,10 @@
+import axios from 'axios';
+import RecordForm from '../components/RecordForm';
 import React, { useState } from 'react';
 import { User, Mail, Shield, Camera, Key, Bell, Globe, Save, ChevronRight, LogOut } from 'lucide-react';
 
 const Profile = ({ user }) => {
+  const [editing, setEditing] = useState(null);
   const [activeTab, setActiveTab] = useState('account');
 
   const tabs = [
@@ -11,7 +14,8 @@ const Profile = ({ user }) => {
   ];
 
   return (
-    <div className="p-6 lg:p-10 bg-slate-50 min-h-full overflow-y-auto font-outfit">
+    <div className="p-6 lg:p-10 bg-slate-50 h-full min-h-0 overflow-y-auto font-outfit">
+      {editing && <RecordForm title={editing === 'password' ? 'Change Password' : 'Edit Profile'} fields={editing === 'password' ? [{name:'current_password',label:'Current password',type:'password'},{name:'new_password',label:'New password',type:'password'}] : [{name:'first_name',label:'First name',value:user?.first_name,required:false},{name:'last_name',label:'Last name',value:user?.last_name,required:false},{name:'email',label:'Email',type:'email',value:user?.email}]} onClose={() => setEditing(null)} onSubmit={async data => { await axios.post('/api/profile', data); window.location.reload(); }} />}
       <div className="max-w-5xl mx-auto">
         <div className="mb-10">
           <h1 className="text-3xl font-black text-slate-900 tracking-tight">Identity Workspace</h1>
@@ -64,7 +68,7 @@ const Profile = ({ user }) => {
                     <div className="w-32 h-32 rounded-[3rem] bg-slate-100 border-4 border-white shadow-xl flex items-center justify-center font-black text-4xl text-blue-600 rotate-3 transition-transform group-hover:rotate-0 duration-500">
                       {user?.username?.[0]?.toUpperCase()}
                     </div>
-                    <button className="absolute -bottom-2 -right-2 p-3 bg-slate-900 text-white rounded-2xl shadow-lg hover:scale-110 active:scale-95 transition-all border-4 border-white">
+                    <button disabled title="Profile photos are not available yet" className="absolute -bottom-2 -right-2 p-3 bg-slate-900 text-white rounded-2xl shadow-lg hover:scale-110 active:scale-95 transition-all border-4 border-white">
                       <Camera size={18} />
                     </button>
                   </div>
@@ -92,19 +96,19 @@ const Profile = ({ user }) => {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
                     <div className="space-y-2">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">First Name</label>
-                      <input type="text" defaultValue={user?.first_name} className="w-full px-6 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-900 outline-none focus:bg-white focus:border-blue-500/30 focus:ring-4 focus:ring-blue-500/5 transition-all" />
+                      <input readOnly type="text" defaultValue={user?.first_name} className="w-full px-6 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-900 outline-none focus:bg-white focus:border-blue-500/30 focus:ring-4 focus:ring-blue-500/5 transition-all" />
                     </div>
                     <div className="space-y-2">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Last Name</label>
-                      <input type="text" className="w-full px-6 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-900 outline-none focus:bg-white focus:border-blue-500/30 focus:ring-4 focus:ring-blue-500/5 transition-all" />
+                      <input readOnly type="text" defaultValue={user?.last_name} className="w-full px-6 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-900 outline-none focus:bg-white focus:border-blue-500/30 focus:ring-4 focus:ring-blue-500/5 transition-all" />
                     </div>
                     <div className="sm:col-span-2 space-y-2">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Business Email</label>
-                      <input type="email" defaultValue={user?.email} className="w-full px-6 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-900 outline-none focus:bg-white focus:border-blue-500/30 focus:ring-4 focus:ring-blue-500/5 transition-all" />
+                      <input readOnly type="email" defaultValue={user?.email} className="w-full px-6 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-900 outline-none focus:bg-white focus:border-blue-500/30 focus:ring-4 focus:ring-blue-500/5 transition-all" />
                     </div>
                   </div>
                   <div className="mt-10 pt-8 border-t border-slate-100 flex justify-end">
-                    <button className="flex items-center gap-2 px-8 py-3.5 bg-blue-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20 active:scale-95">
+                    <button onClick={() => setEditing('profile')} className="flex items-center gap-2 px-8 py-3.5 bg-blue-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20 active:scale-95">
                       <Save size={18} /> Update Artifacts
                     </button>
                   </div>
@@ -112,6 +116,7 @@ const Profile = ({ user }) => {
               </div>
             )}
 
+            {activeTab === 'notifications' && <p className="p-8">Notifications appear in the workspace notification menu. Additional preferences are not available yet.</p>}
             {activeTab === 'security' && (
               <div className="bg-white rounded-[2.5rem] border border-slate-200/60 shadow-sm p-8 lg:p-10 animate-in fade-in slide-in-from-right-4 duration-500">
                 <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-8 flex items-center gap-3">
@@ -123,7 +128,7 @@ const Profile = ({ user }) => {
                       <p className="text-sm font-black text-slate-900">Change Password</p>
                       <p className="text-xs text-slate-400 font-medium mt-1">Rotate your access credentials regularly.</p>
                     </div>
-                    <button className="px-5 py-2.5 bg-white border border-slate-200 text-slate-900 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-slate-50 transition-all shadow-sm">
+                    <button onClick={() => setEditing('password')} className="px-5 py-2.5 bg-white border border-slate-200 text-slate-900 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-slate-50 transition-all shadow-sm">
                       Modify
                     </button>
                   </div>

@@ -5,7 +5,7 @@ import Message from './Message';
 import ChannelProfileModal from './ChannelProfileModal';
 import ConnectUsersModal from './ConnectUsersModal';
 
-const ChatWindow = ({ group, user, messages, onSendMessage, onUploadFile, onLoadHistory, typingUser, canManage }) => {
+const ChatWindow = ({ group, user, messages, onSendMessage, onUploadFile, onLoadHistory, typingUser, canManage, onTyping }) => {
   const [input, setInput] = useState('');
   const [replyTo, setReplyTo] = useState(null);
   const [pendingFile, setPendingFile] = useState(null);
@@ -62,7 +62,7 @@ const ChatWindow = ({ group, user, messages, onSendMessage, onUploadFile, onLoad
           <div className="mt-10 flex items-center justify-center gap-2">
             <div className="px-4 py-2 bg-white rounded-full shadow-sm border border-slate-200 flex items-center gap-2">
               <ShieldCheck size={16} className="text-emerald-500" />
-              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">End-to-End Encrypted</span>
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Team workspace</span>
             </div>
           </div>
         </div>
@@ -130,7 +130,7 @@ const ChatWindow = ({ group, user, messages, onSendMessage, onUploadFile, onLoad
                 <Archive size={20} strokeWidth={2.5} />
               </button>
               <div className="w-px h-6 bg-slate-100 mx-1" />
-              <button className="p-2.5 text-slate-400 hover:text-slate-900 hover:bg-slate-50 rounded-xl transition-all">
+              <button onClick={() => setIsProfileModalOpen(true)} title="Channel settings" className="p-2.5 text-slate-400 hover:text-slate-900 hover:bg-slate-50 rounded-xl transition-all">
                 <MoreVertical size={20} strokeWidth={2.5} />
               </button>
             </div>
@@ -226,7 +226,7 @@ const ChatWindow = ({ group, user, messages, onSendMessage, onUploadFile, onLoad
               />
               <textarea
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
+                onChange={(e) => { setInput(e.target.value); onTyping?.(); }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
@@ -273,7 +273,7 @@ const ChatWindow = ({ group, user, messages, onSendMessage, onUploadFile, onLoad
         isOpen={isConnectModalOpen}
         onClose={() => setIsConnectModalOpen(false)}
         groupId={group.id}
-        currentMembers={[]}
+        currentMembers={group.members}
       />
     </main>
   );

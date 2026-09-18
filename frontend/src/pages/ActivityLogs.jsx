@@ -4,6 +4,7 @@ import { ShieldCheck, Search, Filter, Terminal, Clock, User, Globe, Info } from 
 
 const ActivityLogs = () => {
   const [logs, setLogs] = useState([]);
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
 
@@ -11,7 +12,7 @@ const ActivityLogs = () => {
     axios.get('/api/activity_logs').then(res => {
       setLogs(res.data);
       setLoading(false);
-    });
+    }).catch(() => { setError('Unable to load this page. Check your access and try again.'); setLoading(false); });
   }, []);
 
   const filteredLogs = logs.filter(l =>
@@ -20,6 +21,8 @@ const ActivityLogs = () => {
     l.details?.toLowerCase().includes(search.toLowerCase())
   );
 
+  if (error) return <div role="alert" className="p-8 text-red-600">{error}</div>;
+
   if (loading) return (
     <div className="flex-1 flex items-center justify-center bg-slate-50">
       <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
@@ -27,7 +30,7 @@ const ActivityLogs = () => {
   );
 
   return (
-    <div className="p-6 lg:p-10 bg-slate-50 min-h-full overflow-y-auto">
+    <div className="p-6 lg:p-10 bg-slate-50 h-full min-h-0 overflow-y-auto">
       <div className="mb-8">
         <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-3">
           <Terminal className="text-slate-700" /> Security & Audit Logs
@@ -47,7 +50,7 @@ const ActivityLogs = () => {
               className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-bold outline-none focus:border-slate-900/30 focus:ring-4 focus:ring-slate-900/5 transition-all shadow-sm"
             />
           </div>
-          <button className="p-3 bg-white border border-slate-200 rounded-2xl text-slate-400 hover:text-slate-900 transition-all shadow-sm">
+          <button disabled title="Advanced filters are not available yet" className="p-3 bg-white border border-slate-200 rounded-2xl text-slate-400 hover:text-slate-900 transition-all shadow-sm">
             <Filter size={20} />
           </button>
         </div>

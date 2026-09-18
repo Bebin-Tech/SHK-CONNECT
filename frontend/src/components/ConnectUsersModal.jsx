@@ -13,7 +13,7 @@ const ConnectUsersModal = ({ isOpen, onClose, groupId, currentMembers }) => {
       axios.get('/api/users').then(res => setAllUsers(res.data));
       setSelectedIds(currentMembers?.map(m => m.id) || []);
     }
-  }, [isOpen, currentMembers]);
+  }, [isOpen, groupId]);
 
   if (!isOpen) return null;
 

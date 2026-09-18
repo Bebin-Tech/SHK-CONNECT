@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -9,7 +9,7 @@ db = SQLAlchemy()
 group_members = db.Table('group_members',
     db.Column('user_id', db.Integer, db.ForeignKey('users.id'), primary_key=True),
     db.Column('group_id', db.Integer, db.ForeignKey('groups.id'), primary_key=True),
-    db.Column('joined_at', db.DateTime, default=datetime.utcnow)
+    db.Column('joined_at', db.DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
 )
 
 class Role(db.Model):
@@ -31,7 +31,7 @@ class User(db.Model, UserMixin):
     last_name = db.Column(db.String(100))
     role_id = db.Column(db.Integer, db.ForeignKey('roles.id'))
     is_active = db.Column(db.Boolean, default=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
     
     # Relationships
     role = db.relationship('Role', backref=db.backref('users', lazy=True))
@@ -54,7 +54,7 @@ class Group(db.Model):
     invite_code = db.Column(db.String(10), unique=True)
     is_archived = db.Column(db.Boolean, default=False)
     created_by = db.Column(db.Integer, db.ForeignKey('users.id'))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
     
     # Relationships
     creator = db.relationship('User', foreign_keys=[created_by], backref='groups_created')
@@ -77,7 +77,7 @@ class Message(db.Model):
     recipient_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     parent_id = db.Column(db.Integer, db.ForeignKey('messages.id'), nullable=True)
     is_pinned = db.Column(db.Boolean, default=False)
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    timestamp = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None), index=True)
     message_type = db.Column(db.String(20), default='text') # text, file
     file_url = db.Column(db.Text) # Changed from String(255) to Text for Base64 support
     
@@ -93,11 +93,11 @@ class Expense(db.Model):
     status = db.Column(db.String(20), default='pending') # pending, approved, rejected, paid
     type = db.Column(db.String(10), default='debit') # credit, debit
     is_paid = db.Column(db.Boolean, default=False)
-    bill_date = db.Column(db.DateTime, default=datetime.utcnow)
+    bill_date = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     approved_by = db.Column(db.Integer, db.ForeignKey('users.id'))
     bill_url = db.Column(db.String(255))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
 
     # Relationships
     user = db.relationship('User', foreign_keys=[user_id], backref='expenses')
@@ -109,7 +109,7 @@ class ActivityLog(db.Model):
     action = db.Column(db.String(255), nullable=False)
     details = db.Column(db.Text)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    timestamp = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
     ip_address = db.Column(db.String(45))
 
     user = db.relationship('User', backref='activity_logs')
@@ -122,7 +122,22 @@ class SupportTicket(db.Model):
     status = db.Column(db.String(20), default='open') # open, in_progress, closed
     priority = db.Column(db.String(20), default='medium') # low, medium, high
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None), onupdate=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
     
     user = db.relationship('User', backref='tickets')
+
+class ConversationRead(db.Model):
+    """Per-user read cursor. Added as a new table without changing old messages."""
+    __tablename__ = 'conversation_reads'
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), primary_key=True)
+    conversation = db.Column(db.String(50), primary_key=True)
+    last_message_id = db.Column(db.Integer, nullable=False, default=0)
+
+class UploadedFile(db.Model):
+    """Ownership of private filesystem attachments, separate from legacy static files."""
+    __tablename__ = 'uploaded_files'
+    id = db.Column(db.Integer, primary_key=True)
+    url = db.Column(db.String(512), unique=True, nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    owner = db.relationship('User', backref='uploaded_files')

@@ -1,13 +1,15 @@
+import axios from 'axios';
 import React, { useState } from 'react';
 import Sidebar from './Sidebar';
 import { Menu, Search, Bell, BellOff, MessageCircle } from 'lucide-react';
 
 const Layout = ({ user, children, activePath, notifications, setNotifications }) => {
+  const [searchResults, setSearchResults] = useState(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
 
   return (
-    <div className="flex h-screen bg-slate-50 overflow-hidden font-outfit">
+    <div className="app-layout flex h-screen bg-slate-50 overflow-hidden font-outfit">
       <Sidebar
         user={user}
         activePath={activePath}
@@ -15,7 +17,7 @@ const Layout = ({ user, children, activePath, notifications, setNotifications })
         toggleMobileMenu={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
       />
 
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div className="app-content flex-1 flex flex-col min-w-0 overflow-hidden">
         <header className="h-16 lg:h-20 bg-white/80 backdrop-blur-md border-b border-slate-200/60 flex items-center justify-between px-4 lg:px-10 flex-shrink-0 sticky top-0 z-20">
           <div className="flex items-center gap-4">
             <button
@@ -29,8 +31,10 @@ const Layout = ({ user, children, activePath, notifications, setNotifications })
               <input
                 type="text"
                 placeholder="Search workspace..."
+                onKeyDown={async e => { if (e.key === 'Enter') { try { const res = await axios.get('/chat/search', {params:{q:e.currentTarget.value}}); setSearchResults(res.data); } catch { setSearchResults([]); } } }}
                 className="bg-slate-100/50 border border-transparent focus:border-blue-500/20 focus:bg-white focus:ring-4 focus:ring-blue-500/5 outline-none text-sm w-80 pl-10 pr-4 py-2 rounded-xl transition-all"
               />
+              {searchResults && <div className="absolute top-full bg-white shadow-xl rounded-xl p-4 max-h-80 overflow-auto w-96 z-50"><button onClick={() => setSearchResults(null)} className="float-right">Close</button>{searchResults.length ? searchResults.map(result => <a className="block py-3 border-b" key={result.id} href={`/${result.is_archived ? 'history' : 'chat'}/${result.group_id}`}>{result.user}: {result.content}</a>) : <p>No results</p>}</div>}
             </div>
           </div>
 
@@ -66,13 +70,13 @@ const Layout = ({ user, children, activePath, notifications, setNotifications })
                       </div>
                     ) : (
                       notifications.map((n, i) => (
-                        <div key={i} className="px-4 py-3 hover:bg-gray-50 transition-colors cursor-pointer border-b border-gray-50 last:border-0 flex items-start gap-3">
+                        <div key={i} onClick={() => { window.location.href = n.group_id ? `/chat/${n.group_id}` : `/dm/${n.recipient_id}`; }} className="px-4 py-3 hover:bg-gray-50 transition-colors cursor-pointer border-b border-gray-50 last:border-0 flex items-start gap-3">
                           <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${n.type === 'message' ? 'bg-blue-50 text-blue-500' : 'bg-emerald-50 text-emerald-500'}`}>
                             <MessageCircle size={16} />
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-bold text-gray-800 truncate">
-                              {n.username} <span className="font-normal text-gray-500">{n.type === 'message' ? 'sent a message in' : 'joined'}</span> #{n.group_name}
+                              {n.username} <span className="font-normal text-gray-500">{n.group_id ? 'sent a message in' : 'sent you a direct message'}</span> {n.group_id ? `#${n.group_name}` : ''}
                             </p>
                             <p className="text-[10px] text-gray-400 mt-0.5 line-clamp-1 italic">
                               {n.type === 'message' ? n.content : 'New member active'}
@@ -99,7 +103,7 @@ const Layout = ({ user, children, activePath, notifications, setNotifications })
           </div>
         </header>
 
-        <main className="flex-1 overflow-hidden">
+        <main className="flex-1 min-h-0 overflow-hidden">
           {children}
         </main>
       </div>
