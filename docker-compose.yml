@@ -1,34 +1,43 @@
-version: '3.8'
-
 services:
   db:
-    image: mysql:8.0
-    restart: always
+    image: postgres:17-alpine
     environment:
-      MYSQL_ROOT_PASSWORD: password
-      MYSQL_DATABASE: shk_work_flow
-      MYSQL_USER: user
-      MYSQL_PASSWORD: password
+      POSTGRES_USER: shk
+      POSTGRES_DB: shk_connect
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: ["CMD-SHELL", "pg_isready -U shk -d shk_connect"]
       interval: 5s
       timeout: 5s
       retries: 20
-    ports:
-      - "3306:3306"
-    volumes:
-      - mysql_data:/var/lib/mysql
-
-  app:
+    restart: unless-stopped
+  migrate:
     build: .
-    ports:
-      - "5000:5000"
-    environment:
-      - DATABASE_URL=mysql+pymysql://user:password@db:3306/shk_work_flow
-      - SECRET_KEY=shk-industries-secret-key-2024
+    command: ["alembic", "upgrade", "head"]
+    environment: &api-environment
+      ENVIRONMENT: production
+      DATABASE_URL: postgresql+psycopg://shk:${POSTGRES_PASSWORD}@db:5432/shk_connect
+      JWT_SECRET: ${JWT_SECRET:?Set a random JWT_SECRET in .env}
+      COOKIE_SECURE: "true"
+      CORS_ORIGINS: ${CORS_ORIGINS:-["https://connect.example.com"]}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-["connect.example.com"]}
+      UPLOAD_DIR: /data/uploads
     depends_on:
       db:
         condition: service_healthy
-
+  api:
+    build: .
+    environment: *api-environment
+    ports:
+      - "127.0.0.1:5000:5000"
+    volumes:
+      - uploads:/data/uploads
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
 volumes:
-  mysql_data:
+  postgres_data:
+  uploads:

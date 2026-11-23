@@ -1,32 +1,31 @@
 services:
   - type: web
-    name: shk-work-flow
-    env: docker
-    plan: free
+    name: shk-connect
+    runtime: docker
+    healthCheckPath: /api/health
+    dockerCommand: sh -c 'alembic upgrade head && uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT --workers 2 --no-proxy-headers'
     envVars:
-      - key: PYTHON_VERSION
-        value: 3.11.9
-      - key: PORT
-        value: "5000"
-      - key: FLASK_ENV
+      - key: ENVIRONMENT
         value: production
-      - key: FLASK_DEBUG
-        value: "0"
-      - key: AUTO_CREATE_DB
-        value: "1"
-      - key: SOCKETIO_ASYNC_MODE
-        value: eventlet
-      - key: SECRET_KEY
-        generateValue: true
-      - key: SESSION_COOKIE_SECURE
-        value: "1"
       - key: DATABASE_URL
         fromDatabase:
-          name: shk-work-flow-db
+          name: shk-connect-db
           property: connectionString
-
+      - key: JWT_SECRET
+        generateValue: true
+      - key: COOKIE_SECURE
+        value: 'true'
+      - key: CORS_ORIGINS
+        sync: false
+      - key: ALLOWED_HOSTS
+        sync: false
+      - key: UPLOAD_DIR
+        value: /data/uploads
+    disk:
+      name: attachments
+      mountPath: /data
+      sizeGB: 10
 databases:
-  - name: shk-work-flow-db
-    plan: free
-    databaseName: shk_work_flow
-    user: shk_work_flow
+  - name: shk-connect-db
+    databaseName: shk_connect
+    user: shk

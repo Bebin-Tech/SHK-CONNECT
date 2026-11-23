@@ -7,3 +7,15 @@ static/dist/
 .test-artifacts/
 
 instance/uploads/
+instance/*.db
+instance/*.db-*
+instance/private_uploads/
+instance/legacy-static-uploads/
+*.sqlite
+.pytest_cache/
+.ruff_cache/
+client/.dart_tool/
+client/build/
+client/android/key.properties
+*.jks
+*.keystore

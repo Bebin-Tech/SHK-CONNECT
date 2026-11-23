@@ -1,74 +1,118 @@
-# SHK Connect
+# SHK Connect 2
 
-Flask, SQLAlchemy, Flask-SocketIO and React team workspace. The root directory is the active application. `SHK-CONNECT/` and `SHK-CONNECT-1/` are older snapshots and are not imported or packaged by the root application.
+One Flutter application for **iOS, Android, and Web**, backed by a shared **Python FastAPI REST API** and **PostgreSQL** in production. The active app contains no React, Vite, Node.js server, Flask, or Socket.IO dependencies.
 
-## Local setup
+## Run on Windows
 
-Use Python 3.11 or 3.12 and Node.js 20 or newer.
-
-```powershell
-python -m venv .venv
-.\.venv\Scripts\python -m pip install -r requirements.txt
-Copy-Item .env.example .env
-cd frontend
-npm ci
-npm run build
-cd ..
-.\.venv\Scripts\python create_admin.py
-.\.venv\Scripts\python app.py
-```
-
-Set `SECRET_KEY` in `.env` to a long random value before running. The administrator command prompts for credentials and never resets an existing account. Alternatively, set `ADMIN_EMAIL` and `ADMIN_PASSWORD` for first-run creation. There is no automatic default password. Existing accounts and passwords are preserved.
-
-Open http://localhost:5000. Rebuild the frontend after editing React files. Flask reads Vite's manifest to serve the generated bundle; a running Vite server is not needed. `npm run dev` is available for frontend development with the configured backend proxy.
-
-### Separate backend and frontend terminals
-
-From the project directory, start the backend:
+Prerequisites: Python 3.12 and Flutter 3.41.9 (Dart 3.11). From the project root:
 
 ```powershell
-.\.venv\Scripts\python.exe app.py
+.\scripts\run-dev.ps1
 ```
 
-In another terminal:
+This installs Python requirements, creates a local signing secret if `.env` is absent, builds Flutter Web, applies Alembic migrations, and serves the complete app at **http://localhost:5000**. Later use `-SkipBuild` if Dart files have not changed. API documentation is at `/api/docs` in development. There is no default password.
+
+Create the first administrator if you are starting with an empty database:
 
 ```powershell
-cd frontend
-npm run dev -- --host 127.0.0.1
+.\.venv\Scripts\python -m backend.cli create-admin
 ```
 
-Open http://127.0.0.1:5173. The frontend proxies login, API requests, uploads and Socket.IO to http://127.0.0.1:5000. For a backend on another port, set `$env:BACKEND_URL='http://127.0.0.1:5001'` before starting Vite. Keep the same browser hostname for login and app navigation.
+Fresh local setups default to `instance/connect_v2.db`. This workspace has been configured to use PostgreSQL on `127.0.0.1:55432`, in the persistent Docker container `shk-connect-postgres-dev`. Start it after reboot with `docker start shk-connect-postgres-dev`. The existing users, membership, and messages have been imported without changing passwords. Production settings reject SQLite and insecure cookies. Configure `.env` from `.env.example`; never commit it. Server-side registration is disabled by default. Administrators create teammates from **Team → Add teammate**.
 
-SQLite defaults to `instance/shk_connect.db`. `DATABASE_URL` can select PostgreSQL or MySQL. Startup creates missing tables and roles, but does not migrate existing columns; schema changes require reviewed database migrations. Back up databases before applying migrations. Use a persistent upload directory/volume in production for document and video attachments.
+## One client, three platforms
 
-## Verification
-
-Build the frontend first, then run:
+All screens, domain models, repositories, and API contracts live under `client/lib`. There are no separate mobile features or alternate frontend. Desktop uses persistent navigation and a split conversation view; tablet uses a split view with bottom navigation; phone uses a conversation list and a dedicated conversation screen. All sizes expose channels, direct messages, unread activity, threads, people, account settings, and role-appropriate administration. The glass-blue workspace sidebar, milky-white surfaces, compact messages, and desktop thread pane follow familiar Slack-style navigation. Translucent panels use a soft blue gradient with frosted blur, navy text, and blue action buttons.
 
 ```powershell
-.\.venv\Scripts\python -m unittest discover -s tests -v
+cd client
+flutter pub get
+flutter run -d chrome --web-port 8080 --dart-define=API_BASE_URL=http://localhost:5000/api/v1
+flutter run -d <android-device> --dart-define=API_BASE_URL=https://your-domain/api/v1
+flutter build appbundle --release --dart-define=API_BASE_URL=https://your-domain/api/v1
 ```
 
-Tests use an in-memory SQLite database and do not change saved project data. They cover login, disabled users, account bootstrap, channel creation/membership, live messages and typing, reply isolation, uploads, routes/bundles, profiles, expenses, tickets and audit logging.
+On macOS with Xcode, CocoaPods, and your Apple signing team:
 
-## Deployment
+```sh
+cd client
+flutter run -d <ios-device> --dart-define=API_BASE_URL=https://your-domain/api/v1
+flutter build ipa --release --dart-define=API_BASE_URL=https://your-domain/api/v1
+```
 
-`docker compose up --build` builds the React bundle and waits for MySQL readiness. Supply your own secret and bootstrap credentials. Render uses the Docker image and PostgreSQL. Docker/Render deployment and external database connections must be verified in their target environments. Socket.IO room tracking is process-local; use one worker unless a shared queue is configured.
+Production native apps require an HTTPS API URL. Android emulator development defaults to `10.0.2.2:5000`; iOS simulator defaults to `127.0.0.1:5000`. Physical devices need an accessible host. Android allows HTTP only in debug. iOS keeps App Transport Security enabled: use an HTTPS development endpoint. Configure your own Android upload keystore and Apple certificates before store distribution; no production build uses a debug signing key. Native platform directories are checked in. Store submission, real device checks, and signing require the appropriate platform credentials and toolchains.
 
-The UI still has optional features that are not implemented (MFA, profile photos, advanced filters and receipt management). These are not part of the verified chat/account/ledger/ticket flows. Styles and fonts currently use external CDNs and require internet access.
+Web uses same-origin API paths by default and supports hash navigation without server rewrites. A separately hosted Flutter Web frontend must use the **same site** as the API for Strict refresh cookies, an explicit `API_BASE_URL`, and matching CORS origins. Flutter's JavaScript/Wasm build output is generated from Dart; it does not introduce a Node.js runtime. `--no-web-resources-cdn` bundles engine resources locally.
 
+## Workflows
 
-## Slack-style workspace
+Ledger and Support have been removed from both the UI and REST API. Their historical database tables are retained for data preservation and migration compatibility; no ledger or support operations are exposed.
 
-- Channels retain the existing membership/management rules. Admin, Owner and ED can create channels; use **Manage members** to add teammates.
-- Click a teammate under **Direct messages** for private one-to-one messaging. Conversation history, search, typing and live notifications are scoped to the participants.
-- **Reply in thread** opens a separate thread panel. Files can be attached to channel messages, DMs or replies.
-- Unread badges persist across reloads and devices, and clear when a focused conversation is viewed. Online indicators update with connections; notifications appear in the bell menu.
-- Sending waits for server confirmation; failed sends retain the draft. Reconnecting reloads recent messages. Search is available within each conversation.
+- Channels: create, edit, manage membership, archive/restore, and search retained history.
+- Conversations: scoped direct messages, threads, pinning, cursor-based history, unread counts, online/typing indicators, private attachments up to 20 MB, and in-memory drafts per conversation. Sends use client IDs for safe retries. Downloads use native file storage or browser downloads.
+- Team and account: administrator-created users, role/access management, profile/password changes, session revocation, and privileged audit history. Deactivation preserves authored records.
+- Updates: foreground REST polling every 3 seconds for open conversations and every 10 seconds for the workspace. Polling pauses while the application is backgrounded. This release does not use background push notifications or provide offline message synchronization. Unsent drafts are held in memory, not permanently stored.
 
-This update adds `conversation_reads` and `uploaded_files` tables. With the default `AUTO_CREATE_DB=1`, restarting the backend creates them without rewriting existing messages or passwords. Deployments with automatic creation disabled must create these new tables before serving the updated frontend.
+## Architecture and security
 
-New filesystem attachments default to `instance/uploads` and are served through authenticated, conversation-aware routes. Use persistent storage in deployment. Historical `/static/uploads` URLs retain their existing behavior; files already published there are not retroactively made private. For private storage, keep `UPLOAD_FOLDER` outside the static directory.
+```text
+client/lib/
+  core/        JSON transport, single-flight refresh, platform HTTP adapters
+  domain/      typed account, conversation, and message models
+  data/        workspace repository
+  state/       application/session controller
+  ui/          responsive views and reusable forms/theme
+backend/app/
+  api/         authentication, workspace, administration REST routers
+  core/        validated configuration, JWT, passwords, RBAC
+  conversations.py  shared conversation authorization and serialization
+  models.py    SQLAlchemy persistence models
+  schemas.py   Pydantic request validation
+backend/migrations/  versioned Alembic schema
+```
 
-Frontend state regression tests: `cd frontend` then `npm test`.
-The workspace provides the core Slack-style chat workflows; it does not integrate with Slack or provide Slack's enterprise services.
+Access JWTs expire after 15 minutes, validate issuer/audience/type/signature, and reference a revocable server session. Refresh JWTs rotate on each use, have a 30-day absolute session limit, and are stored as hashes in the database. Replay revokes the session. Logout, password changes, and user role/access changes revoke affected sessions. Roles are read from the database on requests. New passwords use Argon2. Historical scrypt/PBKDF2 hashes upgrade at successful login without retaining a web framework dependency.
+
+Web access tokens stay in memory; refresh tokens use HttpOnly, SameSite=Strict cookies (Secure in production). Native refresh tokens use Keychain/Android protected storage. Authentication endpoints check browser origins and Fetch Metadata. Database-backed sign-in throttling blocks repeated attempts per identifier and direct client IP; put additional global/IP throttling at your trusted gateway. No credentials belong in Dart compile-time configuration. File IDs are generated by the server, storage is private, downloads require conversation access, and uploads are served as downloads rather than executable content.
+
+API workers are stateless with sessions, unread cursors, and presence in the shared database. SQL aggregation and indexed, bounded history queries keep message payloads small. Mount durable shared attachment storage for multiple hosts; PostgreSQL pooling and gateway rate limits should be tuned against measured traffic. Large deployments should replace local files with a private object-storage adapter and signed, authorized downloads.
+
+## Existing data
+
+`instance/shk_connect.db` is the preserved legacy database. The new schema uses a separate database; never point Alembic at the legacy file. The retired application source was backed up locally under `.test-artifacts/legacy-source-before-flutter.zip` before removal. Existing static uploads were moved to `instance/legacy-static-uploads`; existing private uploads remain under `instance/uploads`.
+
+Preview the legacy import, then import into an **empty, migrated destination** configured by `DATABASE_URL`:
+
+```powershell
+.\.venv\Scripts\python -m alembic upgrade head
+.\.venv\Scripts\python -m backend.import_legacy --source instance/shk_connect.db
+.\.venv\Scripts\python -m backend.import_legacy --source instance/shk_connect.db --apply
+```
+
+The importer preserves user IDs, password hashes, channel membership, messages/threads, expenses, tickets, audit records and read cursors. It copies embedded/local message attachments into private storage and resets PostgreSQL sequences. The source is opened read-only. Missing files or unsupported external attachment URLs abort and roll back the destination import; copied files are removed on failure. Legacy group invite codes, channel avatar images, expense receipt URLs, and historical IP fields are not part of the new schema. Back up the source and review the preview before production migration. The local source archive is excluded from Git and deployment images.
+
+## PostgreSQL deployment
+
+Set `JWT_SECRET` to at least 32 random characters, `POSTGRES_PASSWORD` to a URL-safe random value, and JSON arrays `CORS_ORIGINS`/`ALLOWED_HOSTS` to your HTTPS domain in `.env`.
+
+```sh
+docker compose up --build -d
+docker compose exec api python -m backend.cli create-admin
+```
+
+Compose starts PostgreSQL 17, waits for readiness, applies migrations in one dedicated process, and serves the Flutter bundle/API using non-root Uvicorn workers. The API port is bound to host loopback; terminate TLS at your gateway. Set a 21 MB request-body cap and rate limits there. Secure web login requires HTTPS in production. Preserve the PostgreSQL and uploads volumes; do not delete volumes when upgrading. Back up both, and rehearse restoration and migration rollback on a staging copy before deployment. `render.yaml` is an alternative managed PostgreSQL/Docker configuration and needs your domain and persistent disk configuration. No deployment has been published automatically.
+
+## Validation
+
+```powershell
+.\.venv\Scripts\python -m pip install -r requirements-dev.txt
+.\.venv\Scripts\python -m pytest backend/tests -q
+cd client
+flutter analyze
+flutter test
+flutter build web --release --no-web-resources-cdn
+```
+
+Backend tests default to temporary SQLite databases, not saved project data. `SHK_TEST_DATABASE_URL` selects a disposable PostgreSQL database whose name must end in `_test`; the fixture recreates its application tables. The backend suite covers authentication, private messaging, and administration. Tests cover access/refresh/logout, replay, disabled users, CSRF origins, expiry, role enforcement, conversation/thread/file isolation, unread/pagination, removed-module API isolation, private thread inbox, audit, throttling, legacy password compatibility, and reversible schema migration. Flutter widget tests exercise phone/tablet/desktop conversation and send flows, enlarged-text login, failed-send draft retention, private-route cleanup on sign-out, and side-by-side desktop threads. CI also checks PostgreSQL, Android debug compilation, and unsigned iOS compilation. CI configuration is provided; remote CI results are not implied by local checks. See `VALIDATION.md` for the local evidence and remaining platform release checks.
+
+Design references: [Flutter architecture](https://docs.flutter.dev/app-architecture/guide), [adaptive layouts](https://docs.flutter.dev/ui/adaptive-responsive), and [FastAPI JWT security](https://fastapi.tiangolo.com/tutorial/security/oauth2-jwt/).

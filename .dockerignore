@@ -7,3 +7,14 @@ instance
 SHK-CONNECT
 SHK-CONNECT-1
 .test-artifacts
+client/build
+client/.dart_tool
+client/android/.gradle
+client/ios/Pods
+client/ios/.symlinks
+**/*.jks
+**/*.keystore
+**/key.properties
+.pytest_cache
+.ruff_cache
+scripts
