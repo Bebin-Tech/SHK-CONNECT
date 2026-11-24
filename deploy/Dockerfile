@@ -12,4 +12,4 @@ COPY --chmod=755 deploy/entrypoint.sh /usr/local/bin/shk-entrypoint
 RUN mkdir -p /data/uploads && chown -R app:app /app /data
 EXPOSE 5000
 ENTRYPOINT ["/usr/local/bin/shk-entrypoint"]
-CMD ["sh", "-c", "python -m alembic upgrade head && exec uvicorn backend.app.main:app --host 0.0.0.0 --port ${PORT:-5000} --workers 2 --no-proxy-headers"]
+CMD ["sh", "-c", "python -m alembic upgrade head && python -m backend.cloud_seed && exec uvicorn backend.app.main:app --host 0.0.0.0 --port ${PORT:-5000} --workers 2 --no-proxy-headers"]

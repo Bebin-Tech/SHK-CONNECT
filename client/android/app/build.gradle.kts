@@ -28,9 +28,14 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        manifestPlaceholders["appLabel"] = "SHK Connect"
     }
 
     buildTypes {
+        debug {
+            applicationIdSuffix = providers.environmentVariable("SHK_APP_ID_SUFFIX").orNull
+            manifestPlaceholders["appLabel"] = providers.environmentVariable("SHK_APP_LABEL").getOrElse("SHK Connect")
+        }
         release {
             // Configure your upload keystore for store distribution.
             // Never sign a production release with the debug key.
