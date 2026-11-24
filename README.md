@@ -2,6 +2,16 @@
 
 One Flutter application for **iOS, Android, and Web**, backed by a shared **Python FastAPI REST API** and **PostgreSQL** in production. The active app contains no React, Vite, Node.js server, Flask, or Socket.IO dependencies.
 
+## Online phone app
+
+The deployed API is **https://shk-connect-api-production.up.railway.app/api/v1**. Its [health endpoint](https://shk-connect-api-production.up.railway.app/api/health) is public; workspace data requires login. The backend runs on Railway with private PostgreSQL and persistent attachment storage. The deployment image in `deploy/Dockerfile` serves the API; it does not bundle the Web frontend.
+
+Use **SHK Connect Online** on Android (`com.shkconnect.shk_connect.online`). This build uses HTTPS over Wi-Fi or mobile data and does not require USB, the development computer, or its local API. Existing accounts/passwords were migrated unchanged. The separate package keeps the earlier USB-testing installation intact. The GitHub Actions artifact `shk-connect-android-debug` now contains this online build.
+
+The current Railway backend was uploaded with the authenticated Railway CLI because the Railway GitHub connection did not have repository access. GitHub pushes build the Android artifact but do not automatically update that backend. Deploy backend changes using `railway up` against project `f44266bc-0c44-4473-8de4-7912cc7b13d7`, production environment `99e42fcb-ad02-48fb-acab-9753230185bc`, service `8fb01ba7-8f30-4fa3-8dd9-55fbf0a0ffe1`, or connect the GitHub repository in Railway to enable automatic backend deployments. Keep the Dockerfile path set to `deploy/Dockerfile`.
+
+The initial migration used private service variables and the database's private network, without a public database TCP endpoint. `backend.cloud_seed` supports an empty-database import and a conflict-checked final delta for messages sent during cutover. One-time migration variables were cleared after the migration. Local database copies are retained as backups; the online database is now the phone app's source of truth.
+
 ## Run on Windows
 
 Prerequisites: Python 3.12 and Flutter 3.41.9 (Dart 3.11). From the project root:
@@ -24,7 +34,7 @@ Fresh local setups default to `instance/connect_v2.db`. This workspace has been 
 
 ### Test on an Android phone over USB
 
-Enable **USB debugging**, connect a data-capable USB cable, and accept the computer authorization prompt on your phone. Download `shk-connect-android-debug` from the latest successful **Cross-platform verification → Android** job in GitHub Actions and extract `app-debug.apk`. The CI debug build uses the local API through USB:
+For a local-only development build, enable **USB debugging**, connect a data-capable USB cable, and accept the computer authorization prompt on your phone. Build with `flutter build apk --debug --dart-define=API_BASE_URL=http://127.0.0.1:5000/api/v1`, then use the resulting `app-debug.apk`. The standard GitHub artifact targets the online API and does not need these forwarding steps:
 
 ```powershell
 adb devices

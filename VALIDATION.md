@@ -19,3 +19,11 @@ Current workspace redesign: Ledger and Support UI/API operations are removed. Hi
 After the redesign, all 14 backend tests passed on both SQLite and PostgreSQL; all 7 Flutter widget tests and the Flutter analyzer passed. The release Web build succeeded. Live HTTP checks confirmed the updated Flutter bundle, authenticated workspace and thread routes, and 404 responses for both removed module APIs. Automated browser inspection was unavailable because the browser connection timed out; responsive rendering and thread interactions were checked through Flutter widget tests.
 
 Glass-blue/milky-white restyle: Flutter analyzer and all 7 existing UI tests passed; release Web build and Wasm dry run succeeded. The served bundle checksum matches the new build, and the live manifest uses blue #D2E8FC with milky white #F8FAFD.
+
+Online deployment on 2026-11-24:
+
+- Railway API and private PostgreSQL deployments are healthy at `https://shk-connect-api-production.up.railway.app`; both have persistent 500 MB volumes within the current plan limits. No public database proxy was created.
+- Initial migration and final cutover sync completed through private service variables. Migration tests cover password preservation, repeatable import, synchronization of new messages, and atomic rejection of conflicting edits.
+- Verified all six existing logins/roles, two channels, and five currently accessible messages/replies/DMs against the HTTPS API. Historical orphan message rows are retained in storage but are not public conversations.
+- The HTTPS-configured Android APK passed GitHub CI and was installed and launched as `SHK Connect Online` on the physical phone. Verified the bundled production API URL, removed USB API forwarding, and stopped the local development API. The phone app no longer depends on that computer's backend.
+- The one-time migration configuration values were cleared; local backups are retained. The production backend uses a separate signing secret and revocable cloud sessions.
