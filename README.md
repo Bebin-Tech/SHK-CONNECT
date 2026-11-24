@@ -22,6 +22,19 @@ Fresh local setups default to `instance/connect_v2.db`. This workspace has been 
 
 ## One client, three platforms
 
+### Test on an Android phone over USB
+
+Enable **USB debugging**, connect a data-capable USB cable, and accept the computer authorization prompt on your phone. Download `shk-connect-android-debug` from the latest successful **Cross-platform verification → Android** job in GitHub Actions and extract `app-debug.apk`. The CI debug build uses the local API through USB:
+
+```powershell
+adb devices
+adb reverse tcp:5000 tcp:5000
+adb install -r app-debug.apk
+adb shell am start -n com.shkconnect.shk_connect/.MainActivity
+```
+
+Keep this computer, its PostgreSQL container, and FastAPI running while testing. After reconnecting USB, run `adb reverse tcp:5000 tcp:5000` again. The same account data is shared with the Web app. For local Flutter debugging, run `flutter run -d <device-id> --dart-define=API_BASE_URL=http://127.0.0.1:5000/api/v1` after forwarding the port. The debug APK is for development; production builds use your HTTPS API endpoint and release signing.
+
 All screens, domain models, repositories, and API contracts live under `client/lib`. There are no separate mobile features or alternate frontend. Desktop uses persistent navigation and a split conversation view; tablet uses a split view with bottom navigation; phone uses a conversation list and a dedicated conversation screen. All sizes expose channels, direct messages, unread activity, threads, people, account settings, and role-appropriate administration. The glass-blue workspace sidebar, milky-white surfaces, compact messages, and desktop thread pane follow familiar Slack-style navigation. Translucent panels use a soft blue gradient with frosted blur, navy text, and blue action buttons.
 
 ```powershell

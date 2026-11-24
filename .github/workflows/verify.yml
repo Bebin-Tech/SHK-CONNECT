@@ -1,5 +1,5 @@
 name: Cross-platform verification
-on: [push, pull_request]
+on: [push, pull_request, workflow_dispatch]
 jobs:
   backend:
     runs-on: ubuntu-latest
@@ -61,7 +61,14 @@ jobs:
         run: |
           flutter config --jdk-dir="$JAVA_HOME"
           flutter pub get
-          flutter build apk --debug --dart-define=API_BASE_URL=https://connect.example.com/api/v1
+          flutter build apk --debug --dart-define=API_BASE_URL=http://127.0.0.1:5000/api/v1
+      - name: Upload USB-testing APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: shk-connect-android-debug
+          path: client/build/app/outputs/flutter-apk/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
   ios:
     runs-on: macos-latest
     steps:
