@@ -49,7 +49,7 @@ class _ThreadsPageState extends State<ThreadsPage> {
 
   @override
   Widget build(BuildContext context) => ColoredBox(
-    color: paper,
+    color: glassSurface,
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

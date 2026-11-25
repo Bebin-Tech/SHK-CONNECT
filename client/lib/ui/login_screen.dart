@@ -52,9 +52,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                       colors: [
-                        Color(0xFFB9DAF8),
-                        Color(0xFFE9F3FE),
-                        Color(0xFFD7E9FA),
+                        Color(0x40C2E3FC),
+                        Color(0x30FFFFFF),
+                        Color(0x60E2F1FD),
                       ],
                     ),
                   ),
@@ -124,108 +124,119 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.all(28),
                     child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 400),
-                      child: Form(
-                        key: form,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (size.maxWidth < 1000) ...[
-                              const _Brand(),
-                              const SizedBox(height: 56),
-                            ],
-                            const Text(
-                              'Welcome back',
-                              style: TextStyle(
-                                fontSize: 34,
-                                fontWeight: FontWeight.w700,
-                                color: ink,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            const Text(
-                              'Sign in to your team workspace.',
-                              style: TextStyle(
-                                color: Colors.black54,
-                                fontSize: 16,
-                              ),
-                            ),
-                            const SizedBox(height: 36),
-                            TextFormField(
-                              controller: identifier,
-                              enabled: !busy,
-                              autofillHints: const [AutofillHints.username],
-                              decoration: const InputDecoration(
-                                labelText: 'Email or username',
-                                prefixIcon: Icon(Icons.person_outline),
-                              ),
-                              textInputAction: TextInputAction.next,
-                              validator: (v) => v!.trim().isEmpty
-                                  ? 'Enter your email or username'
-                                  : null,
-                            ),
-                            const SizedBox(height: 20),
-                            TextFormField(
-                              controller: password,
-                              enabled: !busy,
-                              obscureText: !visible,
-                              autofillHints: const [AutofillHints.password],
-                              decoration: InputDecoration(
-                                labelText: 'Password',
-                                prefixIcon: const Icon(Icons.lock_outline),
-                                suffixIcon: IconButton(
-                                  tooltip: visible
-                                      ? 'Hide password'
-                                      : 'Show password',
-                                  onPressed: () =>
-                                      setState(() => visible = !visible),
-                                  icon: Icon(
-                                    visible
-                                        ? Icons.visibility_off_outlined
-                                        : Icons.visibility_outlined,
-                                  ),
-                                ),
-                              ),
-                              onFieldSubmitted: (_) => busy ? null : submit(),
-                              validator: (v) =>
-                                  v!.isEmpty ? 'Enter your password' : null,
-                            ),
-                            if (error ?? widget.app.error
-                                case final String message)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 18),
-                                child: Text(
-                                  message,
+                      constraints: const BoxConstraints(maxWidth: 460),
+                      child: GlassPanel(
+                        radius: 28,
+                        child: Padding(
+                          padding: EdgeInsets.all(
+                            size.maxWidth < 400 ? 22 : 32,
+                          ),
+                          child: Form(
+                            key: form,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (size.maxWidth < 1000) ...[
+                                  const _Brand(),
+                                  const SizedBox(height: 36),
+                                ],
+                                const Text(
+                                  'Welcome back',
                                   style: TextStyle(
-                                    color: Theme.of(context).colorScheme.error,
+                                    fontSize: 34,
+                                    fontWeight: FontWeight.w700,
+                                    color: ink,
                                   ),
                                 ),
-                              ),
-                            const SizedBox(height: 28),
-                            SizedBox(
-                              width: double.infinity,
-                              child: FilledButton(
-                                onPressed: busy ? null : submit,
-                                child: busy
-                                    ? const SizedBox(
-                                        height: 20,
-                                        width: 20,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                        ),
-                                      )
-                                    : const Text('Sign in to workspace  →'),
-                              ),
+                                const SizedBox(height: 12),
+                                const Text(
+                                  'Sign in to your team workspace.',
+                                  style: TextStyle(
+                                    color: mutedInk,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                const SizedBox(height: 36),
+                                TextFormField(
+                                  controller: identifier,
+                                  enabled: !busy,
+                                  autofillHints: const [AutofillHints.username],
+                                  decoration: const InputDecoration(
+                                    labelText: 'Email or username',
+                                    prefixIcon: Icon(Icons.person_outline),
+                                  ),
+                                  textInputAction: TextInputAction.next,
+                                  validator: (v) => v!.trim().isEmpty
+                                      ? 'Enter your email or username'
+                                      : null,
+                                ),
+                                const SizedBox(height: 20),
+                                TextFormField(
+                                  controller: password,
+                                  enabled: !busy,
+                                  obscureText: !visible,
+                                  autofillHints: const [AutofillHints.password],
+                                  decoration: InputDecoration(
+                                    labelText: 'Password',
+                                    prefixIcon: const Icon(Icons.lock_outline),
+                                    suffixIcon: IconButton(
+                                      tooltip: visible
+                                          ? 'Hide password'
+                                          : 'Show password',
+                                      onPressed: () =>
+                                          setState(() => visible = !visible),
+                                      icon: Icon(
+                                        visible
+                                            ? Icons.visibility_off_outlined
+                                            : Icons.visibility_outlined,
+                                      ),
+                                    ),
+                                  ),
+                                  onFieldSubmitted: (_) =>
+                                      busy ? null : submit(),
+                                  validator: (v) =>
+                                      v!.isEmpty ? 'Enter your password' : null,
+                                ),
+                                if (error ?? widget.app.error
+                                    case final String message)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 18),
+                                    child: Text(
+                                      message,
+                                      style: TextStyle(
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.error,
+                                      ),
+                                    ),
+                                  ),
+                                const SizedBox(height: 28),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: FilledButton(
+                                    onPressed: busy ? null : submit,
+                                    child: busy
+                                        ? const SizedBox(
+                                            height: 20,
+                                            width: 20,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                            ),
+                                          )
+                                        : const Text('Sign in to workspace  →'),
+                                  ),
+                                ),
+                                const SizedBox(height: 28),
+                                const Text(
+                                  'Need access? Contact your workspace administrator.',
+                                  style: TextStyle(
+                                    color: mutedInk,
+                                    height: 1.5,
+                                  ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(height: 28),
-                            const Text(
-                              'Need access? Contact your workspace administrator.',
-                              style: TextStyle(
-                                color: Colors.black54,
-                                height: 1.5,
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
                       ),
                     ),

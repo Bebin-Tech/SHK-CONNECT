@@ -27,3 +27,8 @@ Online deployment on 2026-11-24:
 - Verified all six existing logins/roles, two channels, and five currently accessible messages/replies/DMs against the HTTPS API. Historical orphan message rows are retained in storage but are not public conversations.
 - The HTTPS-configured Android APK passed GitHub CI and was installed and launched as `SHK Connect Online` on the physical phone. Verified the bundled production API URL, removed USB API forwarding, and stopped the local development API. The phone app no longer depends on that computer's backend.
 - The one-time migration configuration values were cleared; local backups are retained. The production backend uses a separate signing secret and revocable cloud sessions.
+
+## Light translucent UI — 2026-11-25
+
+Updated shared Flutter surfaces with a milky gradient, translucent panels, softer borders, rounded inputs, and a lighter composer/navigation. Flutter analysis and formatting passed. All seven existing responsive interaction checks passed, including 390px phone, 768px tablet, 1440px desktop, narrow large-text login, failed-send drafts, sign-out, and inline threads. Reviewed rendered phone/tablet/desktop previews. Phone was disconnected during verification; Android installation was not performed.
+

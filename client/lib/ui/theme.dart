@@ -4,25 +4,64 @@ import 'package:flutter/material.dart';
 const ink = Color(0xFF193450);
 const mutedInk = Color(0xFF5D7690);
 const blue = Color(0xFF2875C7);
-const sidebar = Color(0xFFDCECFB);
-const rail = Color(0xFFCCE3F8);
-const selection = Color(0xFFC6E2FF);
-const paper = Color(0xFFF8FAFD);
-const blueBorder = Color(0xFFC6DCEE);
+const sidebar = Color(0xFFEAF4FC);
+const rail = Color(0xFFE2EFFB);
+const selection = Color(0x663F9CEB);
+const paper = Color(0xFFF8FBFE);
+const blueBorder = Color(0x333E83B8);
+const glassSurface = Color(0x80FFFFFF);
 
 class GlassBackground extends StatelessWidget {
   final Widget child;
   const GlassBackground({super.key, required this.child});
   @override
-  Widget build(BuildContext context) => DecoratedBox(
-    decoration: const BoxDecoration(
-      gradient: LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [Color(0xFFD2E8FC), Color(0xFFF8FAFD), Color(0xFFE1EDFA)],
+  Widget build(BuildContext context) => Stack(
+    fit: StackFit.expand,
+    children: [
+      const DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFFEEF7FF), Color(0xFFFCFDFE), Color(0xFFEAF4FD)],
+          ),
+        ),
+      ),
+      const Positioned(
+        top: -140,
+        right: -120,
+        child: _GlassGlow(color: Color(0x663FA9F5), size: 640),
+      ),
+      const Positioned(
+        bottom: -180,
+        left: -160,
+        child: _GlassGlow(color: Color(0x5377C7F4), size: 700),
+      ),
+      const Positioned(
+        top: 220,
+        left: 80,
+        child: _GlassGlow(color: Color(0x66FFFFFF), size: 480),
+      ),
+      child,
+    ],
+  );
+}
+
+class _GlassGlow extends StatelessWidget {
+  final Color color;
+  final double size;
+  const _GlassGlow({required this.color, required this.size});
+  @override
+  Widget build(BuildContext context) => IgnorePointer(
+    child: SizedBox.square(
+      dimension: size,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: RadialGradient(colors: [color, color.withValues(alpha: 0)]),
+        ),
       ),
     ),
-    child: child,
   );
 }
 
@@ -40,15 +79,15 @@ class GlassPanel extends StatelessWidget {
   Widget build(BuildContext context) => ClipRRect(
     borderRadius: BorderRadius.circular(radius),
     child: BackdropFilter(
-      filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+      filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
       child: DecoratedBox(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Colors.white.withValues(alpha: .76),
-              color.withValues(alpha: .62),
+              Colors.white.withValues(alpha: .56),
+              color.withValues(alpha: .28),
             ],
           ),
           border: Border.all(color: Colors.white.withValues(alpha: .85)),
@@ -92,31 +131,42 @@ ThemeData connectTheme() {
     scaffoldBackgroundColor: paper,
     fontFamily: 'Roboto',
     appBarTheme: const AppBarTheme(
-      backgroundColor: paper,
+      backgroundColor: glassSurface,
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
       foregroundColor: ink,
       centerTitle: false,
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: const Color(0xFFEDF4FC),
+      fillColor: const Color(0x99FFFFFF),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         borderSide: const BorderSide(color: blueBorder),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: blueBorder),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: blue, width: 1.5),
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
     ),
     dividerTheme: const DividerThemeData(color: blueBorder, thickness: 1),
     cardTheme: CardThemeData(
       elevation: 0,
-      color: const Color(0xFFFDFEFF),
+      color: const Color(0xB3FFFFFF),
+      surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         side: const BorderSide(color: blueBorder),
       ),
     ),

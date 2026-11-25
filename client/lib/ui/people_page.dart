@@ -131,7 +131,7 @@ class _PeoplePageState extends State<PeoplePage> {
         )
         .toList();
     return ColoredBox(
-      color: paper,
+      color: glassSurface,
       child: Column(
         children: [
           Padding(

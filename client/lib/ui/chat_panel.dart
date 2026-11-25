@@ -356,13 +356,13 @@ class _ChatPanelState extends State<ChatPanel> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) => ColoredBox(
-    color: paper,
+    color: glassSurface,
     child: Column(
       children: [
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: const BoxDecoration(
-            border: Border(bottom: BorderSide(color: Color(0xFFC6DCEE))),
+            border: Border(bottom: BorderSide(color: blueBorder)),
           ),
           child: Row(
             children: [
@@ -442,7 +442,7 @@ class _ChatPanelState extends State<ChatPanel> with WidgetsBindingObserver {
             height: 36,
             padding: const EdgeInsets.symmetric(horizontal: 20),
             decoration: const BoxDecoration(
-              border: Border(bottom: BorderSide(color: Color(0xFFE1EBF5))),
+              border: Border(bottom: BorderSide(color: blueBorder)),
             ),
             child: Row(
               children: [
@@ -481,7 +481,7 @@ class _ChatPanelState extends State<ChatPanel> with WidgetsBindingObserver {
             width: double.infinity,
             padding: const EdgeInsets.all(16),
             decoration: const BoxDecoration(
-              border: Border(bottom: BorderSide(color: Color(0xFFE1EBF5))),
+              border: Border(bottom: BorderSide(color: blueBorder)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -586,9 +586,7 @@ class _ChatPanelState extends State<ChatPanel> with WidgetsBindingObserver {
                                     vertical: 5,
                                   ),
                                   decoration: BoxDecoration(
-                                    border: Border.all(
-                                      color: const Color(0xFFC6DCEE),
-                                    ),
+                                    border: Border.all(color: blueBorder),
                                     borderRadius: BorderRadius.circular(16),
                                   ),
                                   child: Text(
@@ -624,16 +622,16 @@ class _ChatPanelState extends State<ChatPanel> with WidgetsBindingObserver {
           Container(
             margin: const EdgeInsets.fromLTRB(16, 8, 16, 16),
             decoration: BoxDecoration(
-              color: const Color(0xE6FFFFFF),
+              color: const Color(0xA6FFFFFF),
               boxShadow: const [
                 BoxShadow(
-                  color: Color(0x143576AD),
+                  color: Color(0x0A3576AD),
                   blurRadius: 16,
                   offset: Offset(0, 4),
                 ),
               ],
-              border: Border.all(color: const Color(0xFFADCCE8)),
-              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: blueBorder),
+              borderRadius: BorderRadius.circular(20),
             ),
             child: Column(
               children: [

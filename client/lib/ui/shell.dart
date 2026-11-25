@@ -381,7 +381,7 @@ class _WorkspaceShellState extends State<WorkspaceShell>
           ? Container(
               padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
               decoration: BoxDecoration(
-                color: paper,
+                color: glassSurface,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Text(
@@ -409,6 +409,7 @@ class _WorkspaceShellState extends State<WorkspaceShell>
         )
         .toList();
     return GlassPanel(
+      radius: 24,
       color: sidebar,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -416,7 +417,7 @@ class _WorkspaceShellState extends State<WorkspaceShell>
           Container(
             padding: const EdgeInsets.fromLTRB(18, 17, 10, 14),
             decoration: const BoxDecoration(
-              border: Border(bottom: BorderSide(color: Color(0xFFC6DCEE))),
+              border: Border(bottom: BorderSide(color: blueBorder)),
             ),
             child: Row(
               children: [
@@ -571,7 +572,7 @@ class _WorkspaceShellState extends State<WorkspaceShell>
                     ),
                   ),
           ),
-          const Divider(color: Color(0xFFC6DCEE), height: 1),
+          const Divider(color: blueBorder, height: 1),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             child: Row(
@@ -604,7 +605,7 @@ class _WorkspaceShellState extends State<WorkspaceShell>
     VoidCallback onTap, {
     bool selected = false,
   }) => Material(
-    color: selected ? const Color(0xFFAED4F5) : Colors.transparent,
+    color: selected ? selection : Colors.transparent,
     child: InkWell(
       onTap: onTap,
       child: Padding(
@@ -628,7 +629,7 @@ class _WorkspaceShellState extends State<WorkspaceShell>
   Widget activity() {
     final unread = widget.app.conversations.where((c) => c.unread > 0).toList();
     return ColoredBox(
-      color: paper,
+      color: glassSurface,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -684,7 +685,7 @@ class _WorkspaceShellState extends State<WorkspaceShell>
       width: 76,
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          colors: [Color(0xD9D1E7FC), Color(0xB3F5F9FF)],
+          colors: [Color(0x70FFFFFF), Color(0x40D7EDFF)],
         ),
         border: Border(bottom: BorderSide(color: Colors.white)),
       ),
@@ -708,9 +709,7 @@ class _WorkspaceShellState extends State<WorkspaceShell>
                         width: 42,
                         height: 38,
                         decoration: BoxDecoration(
-                          color: section == i
-                              ? const Color(0xFFAED4F5)
-                              : Colors.transparent,
+                          color: section == i ? selection : Colors.transparent,
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Icon(destinations[i].$1, size: 22, color: ink),
@@ -823,11 +822,11 @@ class _WorkspaceShellState extends State<WorkspaceShell>
             hintStyle: const TextStyle(color: mutedInk, fontSize: 13),
             prefixIcon: const Icon(Icons.search, color: mutedInk, size: 19),
             filled: true,
-            fillColor: const Color(0xD9F6FAFF),
+            fillColor: const Color(0x80FFFFFF),
             contentPadding: const EdgeInsets.symmetric(horizontal: 12),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(7),
-              borderSide: const BorderSide(color: Color(0xFFC6DCEE)),
+              borderSide: const BorderSide(color: blueBorder),
             ),
           ),
         ),
@@ -843,7 +842,7 @@ class _WorkspaceShellState extends State<WorkspaceShell>
                   padding: const EdgeInsets.symmetric(horizontal: 14),
                   decoration: const BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [Color(0xD9D1E7FC), Color(0xB3F5F9FF)],
+                      colors: [Color(0x70FFFFFF), Color(0x40D7EDFF)],
                     ),
                     border: Border(bottom: BorderSide(color: Colors.white)),
                   ),
@@ -899,11 +898,14 @@ class _WorkspaceShellState extends State<WorkspaceShell>
                         child: ClipRRect(
                           borderRadius: desktop
                               ? const BorderRadius.only(
-                                  topLeft: Radius.circular(9),
-                                  topRight: Radius.circular(9),
+                                  topLeft: Radius.circular(24),
+                                  topRight: Radius.circular(24),
                                 )
                               : BorderRadius.zero,
-                          child: main,
+                          child: Padding(
+                            padding: EdgeInsets.all(desktop ? 8 : 0),
+                            child: main,
+                          ),
                         ),
                       ),
                     ],
@@ -916,8 +918,10 @@ class _WorkspaceShellState extends State<WorkspaceShell>
               ? null
               : NavigationBar(
                   selectedIndex: section < 4 ? section : 0,
-                  backgroundColor: paper,
-                  indicatorColor: const Color(0xFFD6EAFE),
+                  backgroundColor: Colors.transparent,
+                  surfaceTintColor: Colors.transparent,
+                  elevation: 0,
+                  indicatorColor: selection,
                   onDestinationSelected: navigate,
                   destinations: const [
                     NavigationDestination(
