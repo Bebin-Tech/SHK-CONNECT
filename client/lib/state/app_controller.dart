@@ -34,6 +34,9 @@ class AppController extends ChangeNotifier {
       if (lock != null && !await lock!.restoreGate()) return;
       await api.restore();
       account = await repository.me();
+      // A new MaterialApp must not reparent the signed-out navigator and
+      // retain its initial login/loading route after authentication.
+      navigatorKey = GlobalKey<NavigatorState>();
       await lock?.signedIn(account!.id);
       unawaited(notifications?.start(account!.id));
     } catch (e) {
@@ -47,6 +50,7 @@ class AppController extends ChangeNotifier {
   Future<void> login(String identifier, String password) async {
     await api.login(identifier, password);
     account = await repository.me();
+    navigatorKey = GlobalKey<NavigatorState>();
     await lock?.signedIn(account!.id);
     unawaited(notifications?.start(account!.id));
     error = null;
