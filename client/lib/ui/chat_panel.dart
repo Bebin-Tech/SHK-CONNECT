@@ -1,11 +1,12 @@
 import 'dart:async';
+import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
-import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import '../domain/models.dart';
 import '../state/app_controller.dart';
 import 'theme.dart';
+import 'attachment_card.dart';
 
 class ChatPanel extends StatefulWidget {
   final AppController app;
@@ -193,46 +194,40 @@ class _ChatPanelState extends State<ChatPanel> with WidgetsBindingObserver {
   }
 
   Future<void> attach() async {
-    final result = await FilePicker.platform.pickFiles(withData: true);
-    if (result == null || !mounted) return;
-    final file = result.files.single;
-    if (file.size > 20 * 1024 * 1024) {
-      showError(context, 'Choose a file smaller than 20 MB.');
-      return;
-    }
-    if (file.bytes == null) {
-      showError(context, 'Could not read this file.');
-      return;
-    }
+    if (uploading || sending) return;
     setState(() => uploading = true);
     try {
-      final value = await widget.app.api.upload(file.name, file.bytes!);
+      final result = await FilePicker.platform.pickFiles(
+        withData: false,
+        withReadStream: true,
+      );
+      if (result == null || !mounted) return;
+      final file = result.files.single;
+      const limit = 20 * 1024 * 1024;
+      if (file.size > limit) {
+        throw Exception('Choose a file smaller than 20 MB.');
+      }
+      final buffer = BytesBuilder(copy: false);
+      if (file.readStream != null) {
+        await for (final chunk in file.readStream!) {
+          if (!mounted) return;
+          if (buffer.length + chunk.length > limit) {
+            throw Exception('Choose a file smaller than 20 MB.');
+          }
+          buffer.add(chunk);
+        }
+      } else if (file.bytes != null) {
+        buffer.add(file.bytes!);
+      } else {
+        throw Exception('Could not read this file.');
+      }
+      if (buffer.isEmpty) throw Exception('Empty files are not supported.');
+      final value = await widget.app.api.upload(file.name, buffer.takeBytes());
       if (mounted) setState(() => attachment = value);
     } catch (e) {
       if (mounted) showError(context, e);
     } finally {
       if (mounted) setState(() => uploading = false);
-    }
-  }
-
-  Future<void> download(ChatMessage message) async {
-    try {
-      final data = await widget.app.api.download(message.attachment!['id']);
-      final filename = message.attachment!['filename'] as String;
-      final dot = filename.lastIndexOf('.');
-      await FileSaver.instance.saveFile(
-        name: dot > 0 ? filename.substring(0, dot) : filename,
-        bytes: data,
-        fileExtension: dot > 0 ? filename.substring(dot + 1) : '',
-        mimeType: MimeType.other,
-      );
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Attachment saved.')));
-      }
-    } catch (e) {
-      if (mounted) showError(context, e);
     }
   }
 
@@ -312,16 +307,10 @@ class _ChatPanelState extends State<ChatPanel> with WidgetsBindingObserver {
               if (m.attachment != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 6),
-                  child: OutlinedButton.icon(
-                    onPressed: () => download(m),
-                    icon: const Icon(
-                      Icons.insert_drive_file_outlined,
-                      size: 18,
-                    ),
-                    label: Text(
-                      m.attachment!['filename'],
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                  child: AttachmentCard(
+                    key: ValueKey(m.attachment!['id']),
+                    api: widget.app.api,
+                    attachment: m.attachment!,
                   ),
                 ),
               if (widget.parent == null)
@@ -637,26 +626,15 @@ class _ChatPanelState extends State<ChatPanel> with WidgetsBindingObserver {
               children: [
                 if (attachment != null)
                   Padding(
-                    padding: const EdgeInsets.only(left: 12),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.insert_drive_file_outlined, size: 18),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            attachment!['filename'],
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 12),
-                          ),
-                        ),
-                        IconButton(
-                          tooltip: 'Remove attachment',
-                          onPressed: sending
-                              ? null
-                              : () => setState(() => attachment = null),
-                          icon: const Icon(Icons.close, size: 16),
-                        ),
-                      ],
+                    padding: const EdgeInsets.all(8),
+                    child: AttachmentCard(
+                      key: ValueKey(attachment!['id']),
+                      api: widget.app.api,
+                      attachment: attachment!,
+                      pending: true,
+                      onRemove: sending
+                          ? null
+                          : () => setState(() => attachment = null),
                     ),
                   ),
                 TextField(

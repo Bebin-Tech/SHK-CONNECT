@@ -1,4 +1,5 @@
 from fastapi import HTTPException
+from .attachments import metadata
 from sqlalchemy import and_, or_, select
 from .core.security import MANAGEMENT
 from .models import Attachment, Channel, Message, User
@@ -38,4 +39,4 @@ def serialize(db, message):
     return {'id': message.id, 'user_id': message.user_id, 'author': message.author.first_name or message.author.username,
             'content': message.content, 'parent_id': message.parent_id, 'is_pinned': message.is_pinned,
             'created_at': message.created_at.isoformat() + 'Z',
-            'attachment': {'id': attachment.id, 'filename': attachment.filename, 'size': attachment.size} if attachment else None}
+            'attachment': metadata(attachment) if attachment else None}

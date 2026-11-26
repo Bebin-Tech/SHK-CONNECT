@@ -1,11 +1,15 @@
 from datetime import timedelta
+from csv import Error as CsvError
 from pathlib import Path
 from uuid import uuid4
+from zipfile import BadZipFile
+from xml.etree.ElementTree import ParseError
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy import String, cast, func, select
 from sqlalchemy.orm import Session
 from .. import schemas
+from ..attachments import content_preview, detect_type, metadata
 from ..conversations import message_scope, scope, serialize
 from ..core.config import get_settings
 from ..core.security import MANAGEMENT, audit, current_user, require
@@ -216,11 +220,12 @@ def upload(file: UploadFile, user: User = Depends(current_user), db: Session = D
                 output.write(chunk)
         if not size:
             raise HTTPException(422, 'Empty files are not supported')
-        row = Attachment(id=identifier, user_id=user.id, filename=Path((file.filename or 'attachment').replace('\\', '/')).name[:255],
-                         content_type='application/octet-stream', size=size)
+        filename = Path((file.filename or 'attachment').replace('\\', '/')).name[:255]
+        row = Attachment(id=identifier, user_id=user.id, filename=filename,
+                         content_type=detect_type(destination, filename), size=size)
         db.add(row)
         db.commit()
-        return {'id': identifier, 'filename': row.filename, 'size': size}
+        return metadata(row)
     except Exception:
         destination.unlink(missing_ok=True)
         raise
@@ -228,8 +233,7 @@ def upload(file: UploadFile, user: User = Depends(current_user), db: Session = D
         file.file.close()
 
 
-@router.get('/attachments/{attachment_id}')
-def download(attachment_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def accessible_attachment(attachment_id: str, user: User, db: Session):
     attachment = db.get(Attachment, attachment_id)
     if not attachment:
         raise HTTPException(404, 'File not found')
@@ -248,5 +252,20 @@ def download(attachment_id: str, user: User = Depends(current_user), db: Session
     path = get_settings().upload_dir / attachment.id
     if not path.is_file():
         raise HTTPException(404, 'File is unavailable')
-    return FileResponse(path, media_type='application/octet-stream', filename=attachment.filename,
+    return attachment, path
+
+
+@router.get('/attachments/{attachment_id}')
+def download(attachment_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    attachment, path = accessible_attachment(attachment_id, user, db)
+    return FileResponse(path, media_type=attachment.content_type, filename=attachment.filename,
                         headers={'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'private, no-store'})
+
+
+@router.get('/attachments/{attachment_id}/preview')
+def preview_attachment(attachment_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    attachment, path = accessible_attachment(attachment_id, user, db)
+    try:
+        return content_preview(path, attachment)
+    except (ValueError, BadZipFile, ParseError, KeyError, RuntimeError, OSError, CsvError) as error:
+        raise HTTPException(422, 'This file could not be previewed. Download the original to open it.') from error
