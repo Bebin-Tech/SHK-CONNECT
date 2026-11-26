@@ -35,7 +35,7 @@ Updated shared Flutter surfaces with a milky gradient, translucent panels, softe
 
 ## File recognition and previews — 2026-11-26
 
-- Backend: 25 tests passed, including detection independent of upload MIME, private preview permissions, Word/Excel/CSV parsing, malformed document fallback, and bounded text/XML. Ruff fatal checks passed.
+- Backend: 26 tests passed, including detection independent of upload MIME, private preview permissions, Word/Excel/CSV parsing, malformed document fallback, bounded text/XML, and recognition of older generic uploads. Ruff fatal checks passed.
 - Flutter: existing responsive checks passed; five new attachment checks passed for upload-size rejection before stream reads, attachment-only sending, type/size details, spreadsheet preview on a 320px screen, image download reuse/zoom, retry, and unsupported file details.
 - Flutter analysis passed. Release Web build passed with the online API. Android/iOS builds are verified through the repository workflow.
 - Office previews show values/text; original formatting, macros, and legacy binary Office previews are not reproduced. Unsupported formats retain original download.

@@ -2,9 +2,11 @@
 import csv
 import io
 import mimetypes
+from functools import lru_cache
 from pathlib import Path
 from zipfile import BadZipFile, ZipFile
 from xml.etree import ElementTree as ET
+from .core.config import get_settings
 
 MIMES = {
     '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -42,8 +44,21 @@ def detect_type(path: Path, filename: str) -> str:
     return mime
 
 
+@lru_cache(maxsize=512)
+def stored_type(directory: str, identifier: str, filename: str, size: int):
+    path = Path(directory) / identifier
+    try:
+        return detect_type(path, filename)
+    except (OSError, ValueError, BadZipFile):
+        return 'application/octet-stream'
+
+
 def metadata(row):
+    # Older uploads stored every file as octet-stream. Resolve them lazily once,
+    # without rewriting historical records or reading the file on each poll.
     mime = row.content_type
+    if mime == 'application/octet-stream':
+        mime = stored_type(str(get_settings().upload_dir), row.id, row.filename, row.size)
     ext = Path(row.filename).suffix.lower()
     kind = ('image' if mime in {'image/png', 'image/jpeg', 'image/gif', 'image/webp'} else
             'pdf' if mime == 'application/pdf' else
@@ -63,9 +78,10 @@ def metadata(row):
 def content_preview(path: Path, row):
     """Never executes formulas, macros, links, HTML or embedded document content."""
     info = metadata(row)
+    mime = info['content_type']
     if info['preview'] not in {'table', 'text'}:
         raise ValueError('Preview is not available for this format. Download the original to open it.')
-    if row.content_type in {MIMES['.docx'], MIMES['.xlsx']}:
+    if mime in {MIMES['.docx'], MIMES['.xlsx']}:
         with ZipFile(path) as archive:
             if len(archive.infolist()) > 2000:
                 raise ValueError('This document is too complex to preview.')
@@ -84,7 +100,7 @@ def content_preview(path: Path, row):
                     raise ValueError('Unsupported document XML.')
                 return ET.fromstring(raw)
 
-            if row.content_type == MIMES['.docx']:
+            if mime == MIMES['.docx']:
                 root = xml('word/document.xml')
                 text = '\n'.join(''.join(t.text or '' for t in p.findall('.//{*}t')) for p in root.findall('.//{*}p'))
                 return {'type': 'text', 'text': text[:30000], 'truncated': len(text) > 30000,

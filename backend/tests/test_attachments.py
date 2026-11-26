@@ -2,6 +2,8 @@ import io
 from zipfile import ZipFile
 
 import pytest
+from backend.app.db import SessionLocal
+from backend.app.models import Attachment
 
 PREFIX = '/api/v1/attachments'
 
@@ -91,3 +93,15 @@ def test_corrupt_and_large_documents_fall_back_without_server_errors(client, aut
     item = upload(client, headers, 'large.txt', b'x' * 150000)
     preview = client.get(f'{PREFIX}/{item["id"]}/preview', headers=headers).json()
     assert len(preview['text']) == 30000 and preview['truncated']
+
+
+def test_existing_generic_uploads_gain_previews_without_a_data_migration(client, auth):
+    headers, _ = auth()
+    doc = office({'word/document.xml': '<document><p><r><t>Existing upload</t></r></p></document>'})
+    item = upload(client, headers, 'old.docx', doc)
+    with SessionLocal() as db:
+        db.get(Attachment, item['id']).content_type = 'application/octet-stream'
+        db.commit()
+    response = client.get(f'{PREFIX}/{item["id"]}/preview', headers=headers)
+    assert response.json()['text'] == 'Existing upload'
+    assert client.get(f'{PREFIX}/{item["id"]}', headers=headers).headers['content-type'].startswith('application/vnd.openxmlformats')

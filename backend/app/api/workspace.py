@@ -258,7 +258,7 @@ def accessible_attachment(attachment_id: str, user: User, db: Session):
 @router.get('/attachments/{attachment_id}')
 def download(attachment_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
     attachment, path = accessible_attachment(attachment_id, user, db)
-    return FileResponse(path, media_type=attachment.content_type, filename=attachment.filename,
+    return FileResponse(path, media_type=metadata(attachment)['content_type'], filename=attachment.filename,
                         headers={'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'private, no-store'})
 
 
