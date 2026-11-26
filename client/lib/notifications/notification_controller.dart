@@ -227,6 +227,16 @@ class NotificationController extends ChangeNotifier {
           await api.request('GET', '/notifications?after_id=$_cursor&limit=100')
               as Map<String, dynamic>;
       if (generation != _generation) return;
+      if (page['preferences'] is Map) {
+        preferences = {
+          ...Map<String, dynamic>.from(page['preferences'] as Map),
+          'push_configured': page['push_configured'] == true,
+        };
+        pushReady =
+            page['push_configured'] == true &&
+            permissionGranted &&
+            _deviceId != null;
+      }
       for (final item in List<Map<String, dynamic>>.from(page['items'])) {
         _receive(item);
       }
@@ -386,7 +396,7 @@ class NotificationController extends ChangeNotifier {
         },
       );
       _deviceId = row['id'] as String;
-      pushReady = preferences['push_configured'] == true;
+      pushReady = row['push_configured'] == true;
       notifyListeners();
     } catch (_) {
       pushReady = false;

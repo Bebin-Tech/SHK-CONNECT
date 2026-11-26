@@ -8,6 +8,7 @@ class PushConfiguration {
   );
   static const senderId = String.fromEnvironment(
     'FIREBASE_MESSAGING_SENDER_ID',
+    defaultValue: '847570773571',
   );
   static const androidAppId = String.fromEnvironment(
     'FIREBASE_ANDROID_APP_ID',

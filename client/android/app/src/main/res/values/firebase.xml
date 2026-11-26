@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Public Firebase client configuration; no server credentials. -->
+<resources>
+    <string name="google_app_id" translatable="false">1:847570773571:android:6e6e890e6b0ce8d55b96f6</string>
+    <string name="gcm_defaultSenderId" translatable="false">847570773571</string>
+    <string name="google_api_key" translatable="false">AIzaSyDTu7RxnqbUW3glmQ8IHJKHOlqtjuB9aJk</string>
+    <string name="project_id" translatable="false">shk-connect-cb6d2</string>
+    <string name="google_storage_bucket" translatable="false">shk-connect-cb6d2.firebasestorage.app</string>
+</resources>

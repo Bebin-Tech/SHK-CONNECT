@@ -67,7 +67,7 @@ def register_device(data: DeviceInput, request: Request, user: User = Depends(cu
     device.token, device.platform, device.enabled, device.updated_at = data.token, data.platform, True, now()
     db.add(device)
     db.commit()
-    return {'id': device.id}
+    return {'id': device.id, 'push_configured': bool(get_settings().firebase_service_account_json)}
 
 
 @router.delete('/devices/{device_id}', status_code=204)
@@ -87,6 +87,7 @@ def inbox(after_id: int = Query(default=0, ge=0), before_id: int | None = Query(
         query = query.where(Notification.id < before_id)
     rows = list(db.scalars(query.order_by(Notification.id.asc() if after_id else Notification.id.desc()).limit(limit + 1)))
     return {'items': [serialize(n) for n in rows[:limit]], 'has_more': len(rows) > limit,
+            'preferences': preferences(db, user.id), 'push_configured': bool(get_settings().firebase_service_account_json),
             'latest_id': db.scalar(select(func.max(Notification.id)).where(Notification.user_id == user.id)) or 0,
             'unread_count': db.scalar(select(func.count()).select_from(Notification).where(Notification.user_id == user.id, Notification.read_at.is_(None)))}
 
