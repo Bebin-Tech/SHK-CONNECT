@@ -71,8 +71,9 @@ void main() {
             );
           }
           if (request.method == 'POST' &&
-              request.url.path.endsWith('/messages'))
+              request.url.path.endsWith('/messages')) {
             sent = jsonDecode(request.body);
+          }
           return http.Response(
             '{"messages":[],"has_more":false,"typing_user_ids":[],"latest_id":0}',
             200,
