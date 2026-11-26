@@ -7,6 +7,8 @@ import 'threads_page.dart';
 import 'chat_panel.dart';
 import 'forms.dart';
 import 'theme.dart';
+import 'settings_page.dart';
+import 'notifications_page.dart';
 
 class WorkspaceShell extends StatefulWidget {
   final AppController app;
@@ -303,7 +305,15 @@ class _WorkspaceShellState extends State<WorkspaceShell>
   Widget accountMenu({bool light = false}) => PopupMenuButton<String>(
     tooltip: 'Account menu',
     onSelected: (value) async {
-      if (value == 'profile') {
+      if (value == 'settings' || value == 'notifications') {
+        await Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => value == 'settings'
+                ? SettingsPage(app: widget.app)
+                : NotificationsPage(app: widget.app),
+          ),
+        );
+      } else if (value == 'profile') {
         await profile();
       } else if (value == 'audit') {
         navigate(5);
@@ -323,6 +333,8 @@ class _WorkspaceShellState extends State<WorkspaceShell>
         ),
       ),
       const PopupMenuItem(value: 'profile', child: Text('Edit profile')),
+      const PopupMenuItem(value: 'notifications', child: Text('Notifications')),
+      const PopupMenuItem(value: 'settings', child: Text('Settings')),
       if ({'Admin', 'Owner'}.contains(widget.app.account!.role))
         const PopupMenuItem(value: 'audit', child: Text('Workspace audit log')),
       const PopupMenuItem(value: 'logout', child: Text('Sign out')),

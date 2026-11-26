@@ -19,3 +19,9 @@ client/build/
 client/android/key.properties
 *.jks
 *.keystore
+
+# Firebase server credentials and local client build configuration
+**/*firebase-adminsdk*.json
+**/service-account*.json
+client/firebase_config.json
+**/*.p8

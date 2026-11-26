@@ -195,4 +195,39 @@ class Api {
   }
 
   void dispose() => client.close();
+
+  Stream<Map<String, dynamic>> notificationEvents(int afterId) async* {
+    var cursor = afterId;
+    while (true) {
+      final request = http.Request(
+        'GET',
+        Uri.parse('$baseUrl/notifications/events?after_id=$cursor'),
+      );
+      request.headers['Authorization'] = 'Bearer $_access';
+      request.headers['Accept'] = 'text/event-stream';
+      final response = await client
+          .send(request)
+          .timeout(const Duration(seconds: 20));
+      if (response.statusCode == 401) {
+        await response.stream.drain<void>();
+        await _rotate();
+        continue;
+      }
+      if (response.statusCode != 200) {
+        await response.stream.drain<void>();
+        throw ApiException('Could not connect to live notifications.');
+      }
+      await for (final line
+          in response.stream
+              .transform(utf8.decoder)
+              .transform(const LineSplitter())) {
+        if (line.startsWith('data: ')) {
+          final item = jsonDecode(line.substring(6)) as Map<String, dynamic>;
+          cursor = item['id'] as int;
+          yield item;
+        }
+      }
+      await Future<void>.delayed(const Duration(seconds: 2));
+    }
+  }
 }

@@ -1,4 +1,6 @@
 from contextlib import asynccontextmanager
+import asyncio
+from contextlib import suppress
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
@@ -6,7 +8,8 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
-from .api import auth, business, workspace
+from .api import auth, business, workspace, notifications
+from .push_worker import run_worker
 from .core.config import get_settings
 from .db import engine
 
@@ -17,14 +20,20 @@ def create_app():
     @asynccontextmanager
     async def lifespan(app):
         cfg.upload_dir.mkdir(parents=True, exist_ok=True)
-        yield
+        worker = asyncio.create_task(run_worker())
+        try:
+            yield
+        finally:
+            worker.cancel()
+            with suppress(asyncio.CancelledError):
+                await worker
 
     app = FastAPI(title='SHK Connect API', version='2.0.0', lifespan=lifespan,
                   docs_url='/api/docs' if cfg.environment != 'production' else None,
                   redoc_url=None, openapi_url='/api/openapi.json' if cfg.environment != 'production' else None)
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=cfg.allowed_hosts)
     app.add_middleware(CORSMiddleware, allow_origins=cfg.cors_origins, allow_credentials=True,
-                       allow_methods=['GET', 'POST', 'PATCH', 'PUT', 'OPTIONS'],
+                       allow_methods=['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
                        allow_headers=['Authorization', 'Content-Type'])
 
     @app.middleware('http')
@@ -48,7 +57,7 @@ def create_app():
     async def conflict(request, error):
         return JSONResponse({'detail': 'Conflicting update. Refresh and try again.'}, status_code=409)
 
-    for router in (auth.router, workspace.router, business.router):
+    for router in (auth.router, workspace.router, business.router, notifications.router):
         app.include_router(router, prefix='/api/v1')
 
     @app.get('/api/health', tags=['Operations'])

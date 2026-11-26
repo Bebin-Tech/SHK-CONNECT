@@ -39,3 +39,7 @@ Updated shared Flutter surfaces with a milky gradient, translucent panels, softe
 - Flutter: existing responsive checks passed; five new attachment checks passed for upload-size rejection before stream reads, attachment-only sending, type/size details, spreadsheet preview on a 320px screen, image download reuse/zoom, retry, and unsupported file details.
 - Flutter analysis passed. Release Web build passed with the online API. Android/iOS builds are verified through the repository workflow.
 - Office previews show values/text; original formatting, macros, and legacy binary Office previews are not reproduced. Unsupported formats retain original download.
+
+## Notifications and native app lock — 2026-11-26
+
+Added private inbox and SSE APIs, role-restricted academic notifications, transactional message notifications, device/session binding, preferences and a leased push outbox. New backend tests cover idempotency, role and recipient privacy, read access, muted preferences, retry payload privacy, logout revocation and device reassignment. Flutter analysis passes; all 16 Flutter tests pass, including cold-launch gating, failed authentication, timeout/account isolation, lock coverage over private routes, password fallback, notification deduplication and existing responsive/file flows. Native push delivery and real biometric hardware still require signed app/device verification; iOS background push also requires the owner's APNs key and provisioning.

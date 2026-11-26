@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from decimal import Decimal
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Index, Integer, Numeric, String, Table, Text, UniqueConstraint
+from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, Index, Integer, Numeric, String, Table, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .db import Base
 
@@ -127,3 +127,51 @@ class AuditLog(Base):
     action: Mapped[str] = mapped_column(String(255))
     details: Mapped[str] = mapped_column(Text, default='')
     created_at: Mapped[datetime] = mapped_column(default=now, index=True)
+
+
+class NotificationPreference(Base):
+    __tablename__ = 'notification_preferences'
+    user_id: Mapped[int] = mapped_column(ForeignKey('users.id'), primary_key=True)
+    enabled: Mapped[bool] = mapped_column(default=True)
+    sound: Mapped[bool] = mapped_column(default=True)
+    show_preview: Mapped[bool] = mapped_column(default=False)
+    categories: Mapped[dict] = mapped_column(JSON, default=dict)
+
+
+class Notification(Base):
+    __tablename__ = 'notifications'
+    __table_args__ = (UniqueConstraint('user_id', 'event_key'), Index('ix_notifications_user_cursor', 'user_id', 'id'))
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey('users.id'))
+    category: Mapped[str] = mapped_column(String(24))
+    title: Mapped[str] = mapped_column(String(160))
+    body: Mapped[str] = mapped_column(String(2000))
+    event_key: Mapped[str] = mapped_column(String(100))
+    data: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(default=now)
+    read_at: Mapped[datetime | None] = mapped_column(DateTime)
+
+
+class PushDevice(Base):
+    __tablename__ = 'push_devices'
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey('users.id'), index=True)
+    session_id: Mapped[str] = mapped_column(ForeignKey('auth_sessions.id'))
+    token: Mapped[str] = mapped_column(Text)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    platform: Mapped[str] = mapped_column(String(10))
+    enabled: Mapped[bool] = mapped_column(default=True)
+    updated_at: Mapped[datetime] = mapped_column(default=now)
+
+
+class PushDelivery(Base):
+    __tablename__ = 'push_deliveries'
+    __table_args__ = (UniqueConstraint('notification_id', 'device_id'), Index('ix_push_delivery_due', 'status', 'next_attempt_at'))
+    id: Mapped[int] = mapped_column(primary_key=True)
+    notification_id: Mapped[int] = mapped_column(ForeignKey('notifications.id'))
+    device_id: Mapped[str] = mapped_column(ForeignKey('push_devices.id'))
+    status: Mapped[str] = mapped_column(String(12), default='pending')
+    attempts: Mapped[int] = mapped_column(default=0)
+    next_attempt_at: Mapped[datetime] = mapped_column(default=now)
+    lease_until: Mapped[datetime | None] = mapped_column(DateTime)
+    error_code: Mapped[str] = mapped_column(String(100), default='')

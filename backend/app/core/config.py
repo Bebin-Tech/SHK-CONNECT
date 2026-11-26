@@ -1,6 +1,6 @@
 from functools import lru_cache
 from pathlib import Path
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     upload_dir: Path = ROOT / 'instance' / 'private_uploads'
     web_dir: Path = ROOT / 'client' / 'build' / 'web'
     max_upload_bytes: int = 20 * 1024 * 1024
+    firebase_service_account_json: SecretStr | None = None
 
     @field_validator('database_url', mode='before')
     @classmethod

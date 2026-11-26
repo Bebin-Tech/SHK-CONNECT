@@ -10,6 +10,7 @@ from sqlalchemy import String, cast, func, select
 from sqlalchemy.orm import Session
 from .. import schemas
 from ..attachments import content_preview, detect_type, metadata
+from ..notifications import notify
 from ..conversations import message_scope, scope, serialize
 from ..core.config import get_settings
 from ..core.security import MANAGEMENT, audit, current_user, require
@@ -162,6 +163,10 @@ def send(kind: str, target_id: int, data: schemas.MessageInput, user: User = Dep
                       channel_id=target_id if kind == 'channel' else None,
                       recipient_id=target_id if kind == 'dm' else None)
     db.add(message)
+    db.flush()
+    recipients = [target_id] if kind == 'dm' else [m.id for m in db.get(Channel, target_id).members if m.id != user.id]
+    notify(db, recipients, 'messages', f'{user.first_name or user.username} sent a message',
+           message.content or 'Shared an attachment', f'message:{message.id}', {'kind': kind, 'target_id': user.id if kind == 'dm' else target_id})
     db.commit()
     return serialize(db, message)
 

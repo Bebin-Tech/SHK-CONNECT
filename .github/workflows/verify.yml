@@ -43,7 +43,7 @@ jobs:
           dart format --output=none --set-exit-if-changed lib test
           flutter analyze
           flutter test
-          flutter build web --release --no-web-resources-cdn
+          flutter build web --release --no-web-resources-cdn --dart-define=API_BASE_URL=https://shk-connect-api-production.up.railway.app/api/v1
   android:
     runs-on: ubuntu-latest
     steps:
@@ -83,4 +83,4 @@ jobs:
       - working-directory: client
         run: |
           flutter pub get
-          flutter build ios --release --no-codesign --dart-define=API_BASE_URL=https://connect.example.com/api/v1
+          flutter build ios --release --no-codesign --dart-define=API_BASE_URL=https://shk-connect-api-production.up.railway.app/api/v1

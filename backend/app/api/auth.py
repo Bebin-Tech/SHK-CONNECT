@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from ..core.config import get_settings
 from ..core.security import DUMMY_HASH, audit, current_user, decode, digest, hash_password, public_user, token_pair, verify_password
 from ..db import get_db
-from ..models import AuthSession, LoginAttempt, User, now
+from ..models import AuthSession, LoginAttempt, PushDevice, User, now
 from ..schemas import Login, Profile, Refresh, Register
 
 router = APIRouter(prefix='/auth', tags=['Authentication'])
@@ -104,6 +104,7 @@ def logout(request: Request, response: Response, user: User = Depends(current_us
     claims = decode(request.headers['authorization'].split(' ', 1)[1], 'access')
     session = db.get(AuthSession, claims['sid'])
     session.revoked = True
+    db.execute(update(PushDevice).where(PushDevice.session_id == session.id).values(enabled=False))
     audit(db, user, 'auth.logout')
     db.commit()
     response.delete_cookie('shk_refresh', path='/api/v1/auth')

@@ -1,20 +1,28 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import '../core/api.dart';
 import '../data/workspace_repository.dart';
 import '../domain/models.dart';
+import '../security/app_lock.dart';
+import '../notifications/notification_controller.dart';
 
 class AppController extends ChangeNotifier {
   final Api api;
+  GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+  final AppLockController? lock;
+  final NotificationController? notifications;
   late final WorkspaceRepository repository = WorkspaceRepository(api);
   Account? account;
   bool restoring = true;
   List<Conversation> conversations = [];
   String? error;
-  AppController(this.api) {
+  AppController(this.api, {this.lock, this.notifications}) {
     api.onUnauthorized = _expired;
   }
   void _expired() {
+    navigatorKey = GlobalKey<NavigatorState>();
+    lock?.endSession();
+    notifications?.stop();
     account = null;
     conversations = [];
     error = 'Your session has expired. Please sign in.';
@@ -23,8 +31,11 @@ class AppController extends ChangeNotifier {
 
   Future<void> initialize() async {
     try {
+      if (lock != null && !await lock!.restoreGate()) return;
       await api.restore();
       account = await repository.me();
+      await lock?.signedIn(account!.id);
+      unawaited(notifications?.start(account!.id));
     } catch (e) {
       if (e is! ApiException || e.status != 401) error = e.toString();
     } finally {
@@ -36,6 +47,8 @@ class AppController extends ChangeNotifier {
   Future<void> login(String identifier, String password) async {
     await api.login(identifier, password);
     account = await repository.me();
+    await lock?.signedIn(account!.id);
+    unawaited(notifications?.start(account!.id));
     error = null;
     notifyListeners();
   }
@@ -47,6 +60,7 @@ class AppController extends ChangeNotifier {
 
   Future<void> logout() async {
     try {
+      await notifications?.stop(unregister: true);
       await api.logout();
     } finally {
       _expired();
@@ -67,6 +81,8 @@ class AppController extends ChangeNotifier {
 
   @override
   void dispose() {
+    notifications?.dispose();
+    lock?.dispose();
     api.dispose();
     super.dispose();
   }
