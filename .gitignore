@@ -5,6 +5,7 @@ node_modules/
 static/dist/
 .env
 .test-artifacts/
+public_downloads/*.apk
 
 instance/uploads/
 instance/*.db

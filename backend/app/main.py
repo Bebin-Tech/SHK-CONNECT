@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
-from .api import auth, business, workspace, notifications
+from .api import auth, business, workspace, notifications, downloads
 from .push_worker import run_worker
 from .core.config import get_settings
 from .db import engine
@@ -59,6 +59,7 @@ def create_app():
 
     for router in (auth.router, workspace.router, business.router, notifications.router):
         app.include_router(router, prefix='/api/v1')
+    app.include_router(downloads.router)
 
     @app.get('/api/health', tags=['Operations'])
     def health():

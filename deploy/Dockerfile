@@ -7,6 +7,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends gosu \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY backend/ ./backend/
+COPY public_downloads/ ./public_downloads/
 COPY alembic.ini .
 COPY --chmod=755 deploy/entrypoint.sh /usr/local/bin/shk-entrypoint
 RUN mkdir -p /data/uploads && chown -R app:app /app /data
